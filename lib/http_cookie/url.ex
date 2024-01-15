@@ -119,10 +119,16 @@ defmodule HttpCookie.URL do
   # changes over time.  If feasible, user agents SHOULD use an
   # up-to-date public suffix list, such as the one maintained by
   # the Mozilla project at <http://publicsuffix.org/>.
-  def public_suffix?(""), do: false
+  if Code.ensure_loaded?(PublicSuffix) do
+    def public_suffix?(""), do: false
 
-  def public_suffix?(domain) do
-    domain == PublicSuffix.public_suffix(domain)
+    def public_suffix?(domain) do
+      domain == PublicSuffix.public_suffix(domain)
+    end
+  else
+    def public_suffix?(_domain) do
+      raise "Missing :public_suffix dependency"
+    end
   end
 
   def ip_address?(str) do
