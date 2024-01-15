@@ -24,3 +24,9 @@ http_cookie-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+/priv/plts/*.plt
+/priv/plts/*.plt.hash
+!/priv/plts/core.plt/
+/priv/plts/core.plt/*.plt
+/priv/plts/core.plt/*.plt.hash
