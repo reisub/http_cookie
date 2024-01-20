@@ -8,6 +8,8 @@ defmodule HttpCookie do
   alias __MODULE__.{Parser, URL}
   import __MODULE__.Parser, only: [latest_expiry_time: 0]
 
+  @dialyzer {:nowarn_function, matches_url?: 2}
+
   @derive {Inspect, except: [:value]}
   @enforce_keys [:name, :value]
   defstruct [
@@ -69,6 +71,7 @@ defmodule HttpCookie do
   @doc """
   Formats the cookie for sending in a "Cookie" header.
   """
+  @spec to_header_value(cookie :: t()) :: String.t()
   def to_header_value(cookie) do
     "#{cookie.name}=#{cookie.value}"
   end
@@ -78,6 +81,7 @@ defmodule HttpCookie do
 
   Uses the current time if no time is provided.
   """
+  @spec expired?(cookie :: t()) :: boolean()
   def expired?(cookie, now \\ DateTime.utc_now()) do
     DateTime.after?(now, cookie.expiry_time)
   end
@@ -119,6 +123,7 @@ defmodule HttpCookie do
 
   The check is done as specified in [RFC 6265](https://datatracker.ietf.org/doc/html/rfc6265#section-5.4).
   """
+  @spec matches_url?(cookie :: t(), request_url :: URI.t()) :: boolean()
   def matches_url?(cookie, %URI{} = request_url) do
     request_domain = URL.canonicalize_domain(request_url.host)
     request_path = URL.normalize_path(request_url.path)
