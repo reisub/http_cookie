@@ -46,8 +46,8 @@ defmodule HttpCookie.MixProject do
       # the package can't be published with a github dependency so it's excluded for :prod
       # with the expectation that the user will add the optional dependency
       {:public_suffix, github: "axelson/publicsuffix-elixir", only: [:dev, :test]},
-      {:nimble_parsec, "~> 1.0", optional: true},
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+      {:nimble_parsec, "~> 1.0", only: [:dev, :test]},
+      {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
