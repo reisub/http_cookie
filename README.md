@@ -11,8 +11,8 @@ The package can be installed by adding `http_cookie` to your list of dependencie
 ```elixir
 def deps do
   [
-    {:http_cookie, "~> 0.5.0"},
-    # not needed if the public suffix sheck is disabled
+    {:http_cookie, "~> 0.6.0"},
+    # not needed if the public suffix check is disabled
     {:public_suffix, github: "axelson/publicsuffix-elixir"}
   ]
 end

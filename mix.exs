@@ -1,7 +1,7 @@
 defmodule HttpCookie.MixProject do
   use Mix.Project
 
-  @version "0.5.1"
+  @version "0.6.0"
   @source_url "https://github.com/reisub/http_cookie"
 
   def project do
