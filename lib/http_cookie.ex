@@ -49,6 +49,8 @@ defmodule HttpCookie do
   """
   @spec from_cookie_string(str :: String.t(), request_url :: URI.t()) ::
           {:ok, t()} | {:error, atom()}
+  @spec from_cookie_string(str :: String.t(), request_url :: URI.t(), opts :: keyword()) ::
+          {:ok, t()} | {:error, atom()}
   def from_cookie_string(str, %URI{} = request_url, opts \\ []) do
     {name, value, attributes} = Parser.parse_cookie_string(str, request_url)
     attributes = Enum.reverse(attributes)
@@ -77,7 +79,7 @@ defmodule HttpCookie do
   end
 
   @doc """
-  Checks if a cookie has expired.
+  Checks if the cookie has expired.
 
   Uses the current time if no time is provided.
   """
@@ -131,6 +133,17 @@ defmodule HttpCookie do
     matches_domain?(cookie, request_domain) and
       URL.path_match?(request_path, cookie.path) and
       (!cookie.secure_only? or request_url.scheme == "https")
+  end
+
+  @doc """
+  Updates the cookie last access time.
+
+  Uses the current time if no time is provided.
+  """
+  @spec update_last_access_time(cookie :: t()) :: t()
+  @spec update_last_access_time(cookie :: t(), DateTime.t()) :: t()
+  def update_last_access_time(cookie, now \\ DateTime.utc_now()) do
+    %__MODULE__{cookie | last_access_time: now}
   end
 
   defp matches_domain?(%{domain: domain}, domain), do: true
