@@ -45,6 +45,7 @@ defmodule HttpCookie do
 
   ## Options
 
+  - `:max_cookie_size` - maximum size of cookie string in bytes, positive integer or :infinity, default: 8_192
   - `:reject_public_suffixes` - controls whether to reject public suffixes to guard against "supercookies", defaults to true
   """
   @spec from_cookie_string(str :: String.t(), request_url :: URI.t()) ::
@@ -52,10 +53,12 @@ defmodule HttpCookie do
   @spec from_cookie_string(str :: String.t(), request_url :: URI.t(), opts :: keyword()) ::
           {:ok, t()} | {:error, atom()}
   def from_cookie_string(str, %URI{} = request_url, opts \\ []) do
-    {name, value, attributes} = Parser.parse_cookie_string(str, request_url)
-    attributes = Enum.reverse(attributes)
+    max_size = Keyword.get(opts, :max_cookie_size, 8_192)
 
-    with {:ok, cookie} <- new_cookie(name, value),
+    with :ok <- check_size(str, max_size),
+         {name, value, attributes} = Parser.parse_cookie_string(str, request_url),
+         attributes = Enum.reverse(attributes),
+         {:ok, cookie} <- new_cookie(name, value),
          cookie = set_expiry_time(cookie, attributes),
          cookie = set_domain(cookie, attributes),
          {:ok, cookie} <- check_public_suffix(cookie, request_url, opts),
@@ -323,4 +326,8 @@ defmodule HttpCookie do
       nil -> %{cookie | http_only?: false}
     end
   end
+
+  defp check_size(_str, :infinity), do: :ok
+  defp check_size(str, max_size) when byte_size(str) <= max_size, do: :ok
+  defp check_size(_str, _max_size), do: {:error, :cookie_exceeds_max_size}
 end

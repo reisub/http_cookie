@@ -113,6 +113,55 @@ defmodule HttpCookieTest do
                path: "/home"
              } = parse(set_cookie_header)
     end
+
+    test "enforces cookie size limit" do
+      url = URI.parse("https://example.com")
+
+      littany_against_fear =
+        """
+        I must not fear. Fear is the mind-killer. Fear is the little-death that brings total obliteration. I will face my fear. I will permit it to pass over me and through me. And when it has gone past I will turn the inner eye to see its path. Where the fear has gone there will be nothing. Only I will remain.
+        """
+        |> String.trim()
+
+      huge_str =
+        littany_against_fear
+        |> Stream.duplicate(27)
+        |> Enum.join(" ")
+        |> String.split(" ")
+        |> Enum.chunk_every(2)
+        |> Enum.map(fn
+          [k, v] -> "#{k}=#{v}"
+          [k] -> "#{k}"
+        end)
+        |> Enum.join("; ")
+
+      assert {:error, :cookie_exceeds_max_size} =
+               HttpCookie.from_cookie_string(String.slice(huge_str, 0, 8193), url)
+
+      assert {:ok, _} =
+               HttpCookie.from_cookie_string(String.slice(huge_str, 0, 8192), url)
+
+      assert {:ok, _} =
+               HttpCookie.from_cookie_string(
+                 String.slice(huge_str, 0, 8193),
+                 url,
+                 max_cookie_size: :infinity
+               )
+
+      assert {:error, :cookie_exceeds_max_size} =
+               HttpCookie.from_cookie_string(
+                 String.slice(huge_str, 0, 100),
+                 url,
+                 max_cookie_size: 99
+               )
+
+      assert {:ok, _} =
+               HttpCookie.from_cookie_string(
+                 String.slice(huge_str, 0, 99),
+                 url,
+                 max_cookie_size: 99
+               )
+    end
   end
 
   describe "matches_url?/2" do
