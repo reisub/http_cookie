@@ -1,7 +1,15 @@
 defmodule HttpCookie.Jar do
-  defstruct [:cookies, :opts]
+  @moduledoc """
+  HTTP Cookie Jar
+
+  Handles storing cookies from response headers, preparing cookie headers for requests, etc.
+
+  Implemented according to [RFC6265](https://datatracker.ietf.org/doc/html/rfc6265)
+  """
 
   alias HttpCookie
+
+  defstruct [:cookies, :opts]
 
   @type t :: %__MODULE__{
           cookies: map(),
@@ -65,6 +73,8 @@ defmodule HttpCookie.Jar do
   Stores the provided cookie in the jar.
   """
   @spec put_cookie(jar :: %__MODULE__{}, cookie :: HttpCookie.t()) :: %__MODULE__{}
+  @spec put_cookie(jar :: %__MODULE__{}, cookie :: HttpCookie.t(), opts :: list()) ::
+          %__MODULE__{}
   def put_cookie(jar, cookie, opts \\ []) do
     clear_expired? = Keyword.get(opts, :clear_expired, true)
     apply_limits? = Keyword.get(opts, :apply_limits, true)
@@ -101,6 +111,9 @@ defmodule HttpCookie.Jar do
     end)
   end
 
+  @doc """
+  Formats the cookie for sending in a request header for the provided URL.
+  """
   @spec get_cookie_header_value(jar :: %__MODULE__{}, request_url :: URI.t()) ::
           {:ok, String.t()} | {:error, :no_matching_cookies}
   def get_cookie_header_value(jar, request_url) do

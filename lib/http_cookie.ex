@@ -87,6 +87,7 @@ defmodule HttpCookie do
   Uses the current time if no time is provided.
   """
   @spec expired?(cookie :: t()) :: boolean()
+  @spec expired?(cookie :: t(), now :: DateTime.t()) :: boolean()
   def expired?(cookie, now \\ DateTime.utc_now()) do
     DateTime.after?(now, cookie.expiry_time)
   end
