@@ -130,6 +130,82 @@ defmodule HttpCookie.JarTest do
                }
              ] = Jar.get_matching_cookies(jar, ctx.url)
     end
+
+    test "respects default limit for per-domain cookies", ctx do
+      # simulates adding cookies one by one from 101 requests
+      jar =
+        1..101
+        |> Enum.reduce(ctx.jar, fn i, jar ->
+          headers = [
+            {"set-cookie", "foo#{i}=bar#{i}"}
+          ]
+
+          Jar.put_cookies_from_headers(jar, ctx.url, headers)
+        end)
+
+      assert length(Map.values(jar.cookies)) == 100
+
+      # simulates adding 101 cookie in a single request
+      headers =
+        1..101
+        |> Enum.map(fn i ->
+          {"set-cookie", "foo#{i}=bar#{i}"}
+        end)
+
+      jar = Jar.put_cookies_from_headers(ctx.jar, ctx.url, headers)
+
+      assert length(Map.values(jar.cookies)) == 100
+    end
+
+    test "respects limit for per-domain cookies", ctx do
+      jar_with_custom_limit = %{ctx.jar | opts: [max_cookies_per_domain: 1]}
+
+      # simulates adding cookies one by one from 2 requests
+      jar =
+        jar_with_custom_limit
+        |> Jar.put_cookies_from_headers(ctx.url, [{"set-cookie", "foo1=bar1"}])
+        |> Jar.put_cookies_from_headers(ctx.url, [{"set-cookie", "foo2=bar2"}])
+
+      assert length(Map.values(jar.cookies)) == 1
+
+      # simulates adding 2 cookies in a single request
+      jar =
+        Jar.put_cookies_from_headers(
+          jar_with_custom_limit,
+          ctx.url,
+          [
+            {"set-cookie", "foo1=bar1"},
+            {"set-cookie", "foo2=bar2"}
+          ]
+        )
+
+      assert length(Map.values(jar.cookies)) == 1
+    end
+
+    test "respects limit for cookies", ctx do
+      headers = [
+        {"set-cookie", "foo=bar"}
+      ]
+
+      # simulates adding cookies one by one from 5_001 requests
+      jar =
+        1..5_001
+        |> Enum.reduce(ctx.jar, fn i, jar ->
+          url = URI.parse("https://sub#{i}.example.com")
+          Jar.put_cookies_from_headers(jar, url, headers)
+        end)
+
+      assert length(Map.values(jar.cookies)) == 5_000
+
+      jar_with_custom_limit = %{ctx.jar | opts: [max_cookies: 1]}
+
+      jar =
+        jar_with_custom_limit
+        |> Jar.put_cookies_from_headers(URI.parse("https://sub1.example.com"), headers)
+        |> Jar.put_cookies_from_headers(URI.parse("https://sub2.example.com"), headers)
+
+      assert length(Map.values(jar.cookies)) == 1
+    end
   end
 
   describe "get_cookie_header_value/2" do
@@ -174,16 +250,8 @@ defmodule HttpCookie.JarTest do
       {:ok, expired_cookie} = HttpCookie.from_cookie_string("foo2=bar2; max-age=0", ctx.url)
       jar = Jar.put_cookie(jar, expired_cookie)
 
-      assert Enum.count(jar.cookies) == 2
-
-      jar = Jar.clear_expired_cookies(jar)
-
-      assert [
-               %{
-                 name: "foo",
-                 value: "bar"
-               }
-             ] = Jar.get_matching_cookies(jar, ctx.url)
+      # the expired cookie is automatically removed
+      assert Enum.count(jar.cookies) == 1
     end
   end
 

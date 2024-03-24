@@ -4,7 +4,7 @@ defmodule HttpCookie.Jar do
   alias HttpCookie
 
   @type t :: %__MODULE__{
-          cookies: list(HttpCookie.t()),
+          cookies: map(),
           opts: keyword()
         }
 
@@ -13,11 +13,15 @@ defmodule HttpCookie.Jar do
 
   ## Options
 
-  - `:reject_public_suffixes` - controls whether to reject public suffixes to guard against "supercookies", defaults to true
+  - `:max_cookies` - maximum number of cookies stored, positive integer or :infinity, default: 5_000
+  - `:max_cookies_per_domain` - maximum number of cookies stored per domain, positive integer or :infinity, default: 100
+  - `:cookie_opts` - options passed to HttpCookie
   """
   @spec new() :: %__MODULE__{}
   @spec new(opts :: keyword()) :: %__MODULE__{}
   def new(opts \\ []) do
+    validate_opts!(opts)
+
     %__MODULE__{
       cookies: %{},
       opts: opts
@@ -30,11 +34,13 @@ defmodule HttpCookie.Jar do
   """
   @spec put_cookies_from_headers(jar :: t(), request_url :: URI.t(), headers :: list()) :: t()
   def put_cookies_from_headers(jar, request_url, headers) do
+    cookie_opts = Keyword.get(jar.opts, :cookie_opts, [])
+
     cookies =
       headers
       |> Enum.filter(fn {k, _} -> k =~ ~r/^set-cookie2?$/i end)
       |> Enum.flat_map(fn {_, header} ->
-        case HttpCookie.from_cookie_string(header, request_url) do
+        case HttpCookie.from_cookie_string(header, request_url, cookie_opts) do
           {:ok, cookie} -> [cookie]
           _ -> []
         end
@@ -49,15 +55,19 @@ defmodule HttpCookie.Jar do
   @spec put_cookies(jar :: %__MODULE__{}, cookies :: list(HttpCookie.t())) :: %__MODULE__{}
   def put_cookies(jar, cookies) do
     Enum.reduce(cookies, jar, fn cookie, jar ->
-      put_cookie(jar, cookie)
+      put_cookie(jar, cookie, clear_expired: false, apply_limits: false)
     end)
+    |> clear_expired_cookies()
+    |> apply_limits()
   end
 
   @doc """
   Stores the provided cookie in the jar.
   """
   @spec put_cookie(jar :: %__MODULE__{}, cookie :: HttpCookie.t()) :: %__MODULE__{}
-  def put_cookie(jar, cookie) do
+  def put_cookie(jar, cookie, opts \\ []) do
+    clear_expired? = Keyword.get(opts, :clear_expired, true)
+    apply_limits? = Keyword.get(opts, :apply_limits, true)
     cookie_key = key(cookie)
 
     cookie =
@@ -74,6 +84,20 @@ defmodule HttpCookie.Jar do
 
     update_in(jar.cookies, fn cookies ->
       Map.put(cookies, cookie_key, cookie)
+    end)
+    |> then(fn jar ->
+      if clear_expired? do
+        clear_expired_cookies(jar)
+      else
+        jar
+      end
+    end)
+    |> then(fn jar ->
+      if apply_limits? do
+        apply_limits(jar)
+      else
+        jar
+      end
     end)
   end
 
@@ -153,7 +177,68 @@ defmodule HttpCookie.Jar do
     end)
   end
 
+  # At any time, the user agent MAY "remove excess cookies" from the
+  # cookie store if the number of cookies sharing a domain field exceeds
+  # some implementation-defined upper bound (such as 50 cookies).
+  #
+  # At any time, the user agent MAY "remove excess cookies" from the
+  # cookie store if the cookie store exceeds some predetermined upper
+  # bound (such as 3000 cookies).
+  #
+  # When the user agent removes excess cookies from the cookie store, the
+  # user agent MUST evict cookies in the following priority order:
+  #
+  # 1.  Expired cookies.
+  #
+  # 2.  Cookies that share a domain field with more than a predetermined
+  #     number of other cookies.
+  #
+  # 3.  All cookies.
+  #
+  # If two cookies have the same removal priority, the user agent MUST
+  # evict the cookie with the earliest last-access date first.
+  defp apply_limits(%{opts: opts} = jar) do
+    max_cookies_per_domain = Keyword.get(opts, :max_cookies_per_domain, 100)
+    max_cookies = Keyword.get(opts, :max_cookies, 5_000)
+
+    jar
+    |> apply_per_domain_limit(max_cookies_per_domain)
+    |> apply_limit(max_cookies)
+  end
+
+  defp apply_per_domain_limit(jar, :infinity), do: jar
+
+  defp apply_per_domain_limit(jar, limit) do
+    Map.update!(jar, :cookies, fn cookies ->
+      cookies
+      |> Map.values()
+      |> Enum.group_by(& &1.domain)
+      |> Enum.flat_map(fn {_domain, domain_cookies} ->
+        domain_cookies
+        |> Enum.sort_by(& &1.last_access_time, {:desc, DateTime})
+        |> Enum.take(limit)
+      end)
+      |> Map.new(&{key(&1), &1})
+    end)
+  end
+
+  defp apply_limit(jar, :infinity), do: jar
+
+  defp apply_limit(jar, limit) do
+    Map.update!(jar, :cookies, fn cookies ->
+      cookies
+      |> Map.values()
+      |> Enum.sort_by(& &1.last_access_time, {:desc, DateTime})
+      |> Enum.take(limit)
+      |> Map.new(&{key(&1), &1})
+    end)
+  end
+
   defp key(cookie) do
     {cookie.name, cookie.domain, cookie.path}
+  end
+
+  defp validate_opts!(_opts) do
+    # TODO raise if any of the options is invalid!
   end
 end
