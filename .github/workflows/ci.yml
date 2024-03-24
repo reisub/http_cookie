@@ -80,3 +80,6 @@ jobs:
 
       - name: Run tests
         run: mix test --warnings-as-errors
+
+      - name: Check docs
+        run: mix doctor
