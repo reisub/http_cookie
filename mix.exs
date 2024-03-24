@@ -49,7 +49,8 @@ defmodule HttpCookie.MixProject do
       {:nimble_parsec, "~> 1.0", only: [:dev, :test]},
       {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:jason, "~> 1.4", only: :test},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.21.0", only: :dev}
     ]
   end
 
