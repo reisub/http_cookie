@@ -50,6 +50,7 @@ defmodule HttpCookie.MixProject do
       {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:jason, "~> 1.4", only: :test},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:benchee, "~> 1.0", only: [:dev, :test]},
       {:doctor, "~> 0.21.0", only: :dev}
     ]
   end

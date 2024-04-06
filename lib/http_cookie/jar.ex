@@ -16,6 +16,11 @@ defmodule HttpCookie.Jar do
           opts: keyword()
         }
 
+  defmodule DomainCookies do
+    defstruct count: 0,
+              cookies: %{}
+  end
+
   @doc """
   Creates a new empty cookie jar.
 
@@ -78,23 +83,14 @@ defmodule HttpCookie.Jar do
   def put_cookie(jar, cookie, opts \\ []) do
     clear_expired? = Keyword.get(opts, :clear_expired, true)
     apply_limits? = Keyword.get(opts, :apply_limits, true)
-    cookie_key = key(cookie)
 
-    cookie =
-      case Map.get(jar.cookies, cookie_key) do
-        nil ->
-          cookie
+    jar =
+      Map.update!(jar, :cookies, fn cookies ->
+        Map.put_new(cookies, cookie.domain, %DomainCookies{})
+      end)
 
-        old_cookie ->
-          # If the user agent receives a new cookie with the same cookie-name,
-          # domain-value, and path-value as a cookie that it has already stored,
-          # the existing cookie is evicted and replaced with the new cookie.
-          %{cookie | creation_time: old_cookie.creation_time}
-      end
-
-    update_in(jar.cookies, fn cookies ->
-      Map.put(cookies, cookie_key, cookie)
-    end)
+    jar
+    |> put_or_update_cookie(cookie)
     |> then(fn jar ->
       if clear_expired? do
         clear_expired_cookies(jar)
@@ -136,8 +132,8 @@ defmodule HttpCookie.Jar do
   def get_matching_cookies(jar, request_url) do
     now = DateTime.utc_now()
 
-    jar.cookies
-    |> Map.values()
+    jar
+    |> all_cookies()
     |> Enum.filter(fn cookie ->
       !HttpCookie.expired?(cookie, now) and HttpCookie.matches_url?(cookie, request_url)
     end)
@@ -153,8 +149,18 @@ defmodule HttpCookie.Jar do
   @spec clear_expired_cookies(jar :: %__MODULE__{}) :: %__MODULE__{}
   @spec clear_expired_cookies(jar :: %__MODULE__{}, now :: DateTime.t()) :: %__MODULE__{}
   def clear_expired_cookies(jar, now \\ DateTime.utc_now()) do
-    valid_cookies = Map.reject(jar.cookies, fn {_k, c} -> HttpCookie.expired?(c, now) end)
-    %{jar | cookies: valid_cookies}
+    updated_cookies =
+      jar.cookies
+      |> Map.new(fn {domain, %{cookies: domain_cookies}} ->
+        %{
+          result: result,
+          kept: kept
+        } = filter_with_count(domain_cookies, fn {_k, c} -> !HttpCookie.expired?(c, now) end)
+
+        {domain, %{count: kept, cookies: Map.new(result)}}
+      end)
+
+    %{jar | cookies: updated_cookies}
   end
 
   @doc """
@@ -164,8 +170,38 @@ defmodule HttpCookie.Jar do
   """
   @spec clear_session_cookies(jar :: %__MODULE__{}) :: %__MODULE__{}
   def clear_session_cookies(jar) do
-    persistent_cookies = Map.filter(jar.cookies, fn {_l, c} -> c.persistent? end)
-    %{jar | cookies: persistent_cookies}
+    updated_cookies =
+      jar.cookies
+      |> Map.new(fn {domain, %{cookies: domain_cookies}} ->
+        %{
+          result: result,
+          kept: kept
+        } = filter_with_count(domain_cookies, fn {_k, c} -> c.persistent? end)
+
+        {domain, %{count: kept, cookies: Map.new(result)}}
+      end)
+
+    %{jar | cookies: updated_cookies}
+  end
+
+  defp put_or_update_cookie(jar, cookie) do
+    cookie_access_path = cookie_access_path(cookie)
+
+    case get_in(jar, cookie_access_path) do
+      nil ->
+        count_access_path = count_access_path(cookie)
+        domain_cookie_count = get_in(jar, count_access_path)
+
+        jar
+        |> put_in(cookie_access_path, cookie)
+        |> put_in(count_access_path, domain_cookie_count + 1)
+
+      old_cookie ->
+        # If the user agent receives a new cookie with the same cookie-name,
+        # domain-value, and path-value as a cookie that it has already stored,
+        # the existing cookie is evicted and replaced with the new cookie.
+        put_in(jar, cookie_access_path, %{cookie | creation_time: old_cookie.creation_time})
+    end
   end
 
   # 2.  The user agent SHOULD sort the cookie-list in the following
@@ -223,15 +259,18 @@ defmodule HttpCookie.Jar do
 
   defp apply_per_domain_limit(jar, limit) do
     Map.update!(jar, :cookies, fn cookies ->
-      cookies
-      |> Map.values()
-      |> Enum.group_by(& &1.domain)
-      |> Enum.flat_map(fn {_domain, domain_cookies} ->
-        domain_cookies
-        |> Enum.sort_by(& &1.last_access_time, {:desc, DateTime})
-        |> Enum.take(limit)
+      Map.new(cookies, fn {domain, %{count: count, cookies: domain_cookies}} ->
+        if count > limit do
+          updated =
+            domain_cookies
+            |> Enum.sort_by(fn {_k, c} -> c.last_access_time end, {:desc, DateTime})
+            |> Enum.take(limit)
+
+          {domain, %{count: limit, cookies: Map.new(updated)}}
+        else
+          {domain, %{count: count, cookies: domain_cookies}}
+        end
       end)
-      |> Map.new(&{key(&1), &1})
     end)
   end
 
@@ -239,16 +278,60 @@ defmodule HttpCookie.Jar do
 
   defp apply_limit(jar, limit) do
     Map.update!(jar, :cookies, fn cookies ->
-      cookies
-      |> Map.values()
-      |> Enum.sort_by(& &1.last_access_time, {:desc, DateTime})
-      |> Enum.take(limit)
-      |> Map.new(&{key(&1), &1})
+      total_count =
+        cookies
+        |> Enum.map(fn {_d, %{count: c}} -> c end)
+        |> Enum.sum()
+
+      if total_count > limit do
+        updated_cookies =
+          jar.cookies
+          |> Map.values()
+          |> Enum.flat_map(&Map.to_list(&1.cookies))
+          |> Enum.sort_by(fn {_k, c} -> c.last_access_time end, {:desc, DateTime})
+          |> Enum.take(limit)
+          |> Enum.group_by(fn {_k, c} -> c.domain end)
+          |> Map.new(fn {domain, cookie_list} ->
+            {
+              domain,
+              %{
+                count: length(cookie_list),
+                cookies: Map.new(cookie_list)
+              }
+            }
+          end)
+
+        updated_cookies
+      else
+        cookies
+      end
     end)
   end
 
-  defp key(cookie) do
-    {cookie.name, cookie.domain, cookie.path}
+  defp all_cookies(jar) do
+    jar.cookies
+    |> Map.values()
+    |> Enum.flat_map(&Map.values(&1.cookies))
+  end
+
+  defp count_access_path(cookie) do
+    [Access.key(:cookies), cookie.domain, Access.key(:count)]
+  end
+
+  defp cookie_access_path(cookie) do
+    [Access.key(:cookies), cookie.domain, Access.key(:cookies), {cookie.name, cookie.path}]
+  end
+
+  defp filter_with_count(list, fun) do
+    list
+    |> Enum.reverse()
+    |> Enum.reduce(%{result: [], kept: 0, discarded: 0}, fn item, acc ->
+      if fun.(item) do
+        %{acc | result: [item | acc.result], kept: acc.kept + 1}
+      else
+        %{acc | discarded: acc.discarded + 1}
+      end
+    end)
   end
 
   defp validate_opts!(_opts) do

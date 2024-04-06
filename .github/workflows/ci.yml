@@ -79,7 +79,7 @@ jobs:
         run: mix compile --warnings-as-errors
 
       - name: Run tests
-        run: mix test --warnings-as-errors
+        run: mix test --warnings-as-errors --include slow:true --include benchmark:true
 
       - name: Check docs
         run: mix doctor
