@@ -17,12 +17,12 @@ defmodule HttpCookie.JarTest do
 
         jar = Jar.put_cookies_from_headers(ctx.jar, ctx.url, headers)
 
-        assert [
-                 %{
-                   name: "foo",
-                   value: "bar"
-                 }
-               ] = Jar.get_matching_cookies(jar, ctx.url)
+        assert {[
+                  %{
+                    name: "foo",
+                    value: "bar"
+                  }
+                ], _} = Jar.get_matching_cookies(jar, ctx.url)
       end
     end
 
@@ -35,16 +35,16 @@ defmodule HttpCookie.JarTest do
 
       jar = Jar.put_cookies_from_headers(ctx.jar, ctx.url, headers)
 
-      assert [
-               %{
-                 name: "foo",
-                 value: "bar"
-               },
-               %{
-                 name: "foo2",
-                 value: "bar2"
-               }
-             ] = Jar.get_matching_cookies(jar, ctx.url)
+      assert {[
+                %{
+                  name: "foo",
+                  value: "bar"
+                },
+                %{
+                  name: "foo2",
+                  value: "bar2"
+                }
+              ], _} = Jar.get_matching_cookies(jar, ctx.url)
     end
 
     test "handles no set-cookie/set-cookie2 headers", ctx do
@@ -53,19 +53,19 @@ defmodule HttpCookie.JarTest do
       ]
 
       jar = Jar.put_cookies_from_headers(ctx.jar, ctx.url, headers)
-      assert Jar.get_matching_cookies(jar, ctx.url) == []
+      assert {[], _} = Jar.get_matching_cookies(jar, ctx.url)
     end
 
     test "accumulates cookies", ctx do
       {:ok, cookie} = HttpCookie.from_cookie_string("foo=bar", ctx.url)
       jar = Jar.put_cookie(ctx.jar, cookie)
 
-      assert [
-               %{
-                 name: "foo",
-                 value: "bar"
-               }
-             ] = Jar.get_matching_cookies(jar, ctx.url)
+      assert {[
+                %{
+                  name: "foo",
+                  value: "bar"
+                }
+              ], _} = Jar.get_matching_cookies(jar, ctx.url)
 
       headers = [
         {"Content-Type", "application/json"},
@@ -74,16 +74,16 @@ defmodule HttpCookie.JarTest do
 
       jar = Jar.put_cookies_from_headers(jar, ctx.url, headers)
 
-      assert [
-               %{
-                 name: "foo",
-                 value: "bar"
-               },
-               %{
-                 name: "foo2",
-                 value: "bar2"
-               }
-             ] = Jar.get_matching_cookies(jar, ctx.url)
+      assert {[
+                %{
+                  name: "foo",
+                  value: "bar"
+                },
+                %{
+                  name: "foo2",
+                  value: "bar2"
+                }
+              ], _} = Jar.get_matching_cookies(jar, ctx.url)
     end
 
     for attribute <- ["expires=Thu, 10 Apr 1980 16:33:12 GMT", "max-age=0", "max-age=-3600"] do
@@ -93,12 +93,12 @@ defmodule HttpCookie.JarTest do
         {:ok, cookie} = HttpCookie.from_cookie_string("foo=bar", ctx.url)
         jar = Jar.put_cookie(ctx.jar, cookie)
 
-        assert [
-                 %{
-                   name: "foo",
-                   value: "bar"
-                 }
-               ] = Jar.get_matching_cookies(jar, ctx.url)
+        assert {[
+                  %{
+                    name: "foo",
+                    value: "bar"
+                  }
+                ], _} = Jar.get_matching_cookies(jar, ctx.url)
 
         headers = [
           {"Content-Type", "application/json"},
@@ -106,7 +106,7 @@ defmodule HttpCookie.JarTest do
         ]
 
         jar = Jar.put_cookies_from_headers(jar, ctx.url, headers)
-        assert Jar.get_matching_cookies(jar, ctx.url) == []
+        assert {[], _} = Jar.get_matching_cookies(jar, ctx.url)
       end
     end
 
@@ -122,13 +122,13 @@ defmodule HttpCookie.JarTest do
 
       jar = Jar.put_cookies_from_headers(jar, ctx.url, headers)
 
-      assert [
-               %{
-                 name: "foo",
-                 value: "bar2",
-                 creation_time: ~U[1999-12-25 12:00:00Z]
-               }
-             ] = Jar.get_matching_cookies(jar, ctx.url)
+      assert {[
+                %{
+                  name: "foo",
+                  value: "bar2",
+                  creation_time: ~U[1999-12-25 12:00:00Z]
+                }
+              ], _} = Jar.get_matching_cookies(jar, ctx.url)
     end
 
     test "respects default limit for per-domain cookies", ctx do
@@ -223,7 +223,7 @@ defmodule HttpCookie.JarTest do
       {:ok, cookie} = HttpCookie.from_cookie_string("foo=bar", ctx.url)
       jar = Jar.put_cookie(ctx.jar, cookie)
 
-      assert Jar.get_cookie_header_value(jar, ctx.url) == {:ok, "foo=bar"}
+      assert {:ok, "foo=bar", %HttpCookie.Jar{}} = Jar.get_cookie_header_value(jar, ctx.url)
     end
 
     test "when two cookies match", ctx do
@@ -233,7 +233,8 @@ defmodule HttpCookie.JarTest do
       {:ok, other_cookie} = HttpCookie.from_cookie_string("foo2=bar2", ctx.url)
       jar = Jar.put_cookie(jar, other_cookie)
 
-      assert Jar.get_cookie_header_value(jar, ctx.url) == {:ok, "foo=bar; foo2=bar2"}
+      assert {:ok, "foo=bar; foo2=bar2", %HttpCookie.Jar{}} =
+               Jar.get_cookie_header_value(jar, ctx.url)
     end
 
     test "when the cookie is expired", ctx do
@@ -241,6 +242,21 @@ defmodule HttpCookie.JarTest do
       jar = Jar.put_cookie(ctx.jar, cookie)
 
       assert Jar.get_cookie_header_value(jar, ctx.url) == {:error, :no_matching_cookies}
+    end
+
+    test "updates last_access_time", ctx do
+      {:ok, cookie} = HttpCookie.from_cookie_string("foo=bar", ctx.url)
+      cookie = %{cookie | last_access_time: ~U[2024-04-01 12:00:00Z]}
+      jar = Jar.put_cookie(ctx.jar, cookie)
+
+      assert {:ok, "foo=bar", updated_jar} = Jar.get_cookie_header_value(jar, ctx.url)
+
+      updated_cookie =
+        updated_jar.cookies["example.com"].cookies
+        |> Map.values()
+        |> hd()
+
+      assert DateTime.after?(updated_cookie.last_access_time, ~U[2024-04-01 12:00:00Z])
     end
   end
 
@@ -255,12 +271,12 @@ defmodule HttpCookie.JarTest do
       jar = Jar.put_cookie(jar, expired_cookie)
 
       # the expired cookie is automatically removed
-      assert [
-               %{
-                 name: "foo",
-                 value: "bar"
-               }
-             ] = Jar.get_matching_cookies(jar, ctx.url)
+      assert {[
+                %{
+                  name: "foo",
+                  value: "bar"
+                }
+              ], _} = Jar.get_matching_cookies(jar, ctx.url)
     end
   end
 
@@ -278,12 +294,12 @@ defmodule HttpCookie.JarTest do
 
       jar = Jar.clear_session_cookies(jar)
 
-      assert [
-               %{
-                 name: "foo",
-                 value: "bar"
-               }
-             ] = Jar.get_matching_cookies(jar, ctx.url)
+      assert {[
+                %{
+                  name: "foo",
+                  value: "bar"
+                }
+              ], _} = Jar.get_matching_cookies(jar, ctx.url)
     end
   end
 
@@ -317,7 +333,7 @@ defmodule HttpCookie.JarTest do
 
         actual_cookies =
           case Jar.get_cookie_header_value(jar, next_request_url) do
-            {:ok, value} -> parse_cookie_header_value(value)
+            {:ok, value, _jar} -> parse_cookie_header_value(value)
             {:error, :no_matching_cookies} -> []
           end
 

@@ -17,6 +17,13 @@ defmodule HttpCookie.Jar do
         }
 
   defmodule DomainCookies do
+    @moduledoc false
+
+    @type t :: %__MODULE__{
+            count: integer(),
+            cookies: map()
+          }
+
     defstruct count: 0,
               cookies: %{}
   end
@@ -113,32 +120,48 @@ defmodule HttpCookie.Jar do
   @spec get_cookie_header_value(jar :: %__MODULE__{}, request_url :: URI.t()) ::
           {:ok, String.t()} | {:error, :no_matching_cookies}
   def get_cookie_header_value(jar, request_url) do
-    cookies =
-      jar
-      |> get_matching_cookies(request_url)
-      |> Enum.map(&HttpCookie.to_header_value/1)
+    {cookies, updated_jar} = get_matching_cookies(jar, request_url)
 
     if Enum.empty?(cookies) do
       {:error, :no_matching_cookies}
     else
-      {:ok, Enum.join(cookies, "; ")}
+      header_value =
+        cookies
+        |> Enum.map(&HttpCookie.to_header_value/1)
+        |> Enum.join("; ")
+
+      {:ok, header_value, updated_jar}
     end
   end
 
   @doc """
   Gets all the cookies in the store which match the given request URL.
   """
-  @spec get_matching_cookies(jar :: %__MODULE__{}, request_url :: URI.t()) :: list(HttpCookie.t())
+  @spec get_matching_cookies(jar :: %__MODULE__{}, request_url :: URI.t()) ::
+          {list(HttpCookie.t()), %__MODULE__{}}
   def get_matching_cookies(jar, request_url) do
     now = DateTime.utc_now()
 
-    jar
-    |> all_cookies()
-    |> Enum.filter(fn cookie ->
-      !HttpCookie.expired?(cookie, now) and HttpCookie.matches_url?(cookie, request_url)
-    end)
-    |> sort_cookies()
-    |> Enum.map(&HttpCookie.update_last_access_time/1)
+    matching_cookies =
+      jar
+      |> all_cookies()
+      |> Enum.filter(fn cookie ->
+        !HttpCookie.expired?(cookie, now) and HttpCookie.matches_url?(cookie, request_url)
+      end)
+      |> sort_cookies()
+
+    now = DateTime.utc_now()
+
+    updated_jar =
+      Enum.reduce(matching_cookies, jar, fn cookie, updated_jar ->
+        update_in(
+          updated_jar,
+          cookie_access_path(cookie),
+          &HttpCookie.update_last_access_time(&1, now)
+        )
+      end)
+
+    {matching_cookies, updated_jar}
   end
 
   @doc """

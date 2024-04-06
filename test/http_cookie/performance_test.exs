@@ -136,7 +136,7 @@ defmodule HttpCookie.PerformanceTest do
           reduction_time: 1
         )
 
-      assert max_reductions(result, "empty_jar") < 150
+      assert max_reductions(result, "empty_jar") < 200
       assert max_reductions(result, "small_jar") < 2_500
       assert max_reductions(result, "big_jar") < 200_000
       assert max_reductions(result, "full_jar") < 3_250_000
