@@ -118,7 +118,7 @@ defmodule HttpCookie.Jar do
   Formats the cookie for sending in a request header for the provided URL.
   """
   @spec get_cookie_header_value(jar :: %__MODULE__{}, request_url :: URI.t()) ::
-          {:ok, String.t()} | {:error, :no_matching_cookies}
+          {:ok, String.t(), %__MODULE__{}} | {:error, :no_matching_cookies}
   def get_cookie_header_value(jar, request_url) do
     {cookies, updated_jar} = get_matching_cookies(jar, request_url)
 

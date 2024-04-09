@@ -48,6 +48,8 @@ defmodule HttpCookie.MixProject do
       {:public_suffix, github: "axelson/publicsuffix-elixir", only: [:dev, :test]},
       {:nimble_parsec, "~> 1.0", only: [:dev, :test]},
       {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
+      {:req, "~> 0.5.0", only: :test},
+      {:plug, "~> 1.0", only: :test},
       {:jason, "~> 1.4", only: :test},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:benchee, "~> 1.0", only: [:dev, :test]},
