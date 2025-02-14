@@ -18,9 +18,11 @@ jobs:
           - pair:
               elixir: "1.15.0"
               otp: "24.3.4.10"
+              benchmark: false
           - pair:
               elixir: "1.18.2"
               otp: "27.2.2"
+              benchmark: true
     env:
       MIX_ENV: test
     steps:
@@ -85,6 +87,11 @@ jobs:
 
       - name: Run tests
         run: mix test --warnings-as-errors --include slow:true --include benchmark:true
+        if: ${{ matrix.pair.benchmark }}
+
+      - name: Run tests
+        run: mix test --warnings-as-errors --include slow:true
+        if: ${{ ! matrix.pair.benchmark }}
 
       - name: Check docs
         run: mix doctor
