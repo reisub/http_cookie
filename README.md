@@ -18,9 +18,24 @@ def deps do
 end
 ```
 
+## Usage with `Req`
+
+HttpCookie can be used with [Req](https://github.com/wojtekmach/req) to automatically set and parse cookies in HTTP requests:
+
+```elixir
+empty_jar = HttpCookie.Jar.new()
+
+req =
+  Req.new(base_url: "https://example.com", plug: plug)
+  |> HttpCookie.ReqCookieManager.attach()
+
+%{private: %{cookie_jar: updated_jar}} = Req.get!(req, url: "/one", cookie_jar: empty_jar)
+%{private: %{cookie_jar: updated_jar}} = Req.get!(req, url: "/two", cookie_jar: updated_jar)
+```
+
 ## License
 
-Copyright (c) 2024 Dino Kovač
+Copyright (c) 2025 Dino Kovač
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## UNRELEASED
+
+  * Added :max_cookies and :max_cookies_per_domain options
+  * Added ReqCookieManager plugin
+  * Fixed updating last access time
+
 ## v0.6.0 (2024-01-23)
 
   * Added `HttpCookie.Jar` with basic functionality for a cookie jar
