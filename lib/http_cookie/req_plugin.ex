@@ -1,5 +1,5 @@
 if Code.ensure_loaded?(Req) do
-  defmodule HttpCookie.ReqCookieManager do
+  defmodule HttpCookie.ReqPlugin do
     @moduledoc """
     Automatically manages cookies using http_cookie.
     """

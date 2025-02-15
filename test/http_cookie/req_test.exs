@@ -1,7 +1,7 @@
 defmodule HttpCookie.ReqTest do
   use ExUnit.Case, async: true
 
-  alias HttpCookie.ReqCookieManager
+  alias HttpCookie.ReqPlugin
 
   test "end-to-end" do
     plug =
@@ -34,7 +34,7 @@ defmodule HttpCookie.ReqTest do
 
     req =
       Req.new(base_url: "https://example.com", plug: plug)
-      |> ReqCookieManager.attach(cookie_jar: empty_jar)
+      |> ReqPlugin.attach(cookie_jar: empty_jar)
 
     assert %{private: %{cookie_jar: updated_jar}} = Req.get!(req, url: "/one")
 
@@ -90,7 +90,7 @@ defmodule HttpCookie.ReqTest do
 
     req =
       Req.new(base_url: "https://example.com", plug: plug, redirect_log_level: false)
-      |> ReqCookieManager.attach(cookie_jar: empty_jar)
+      |> ReqPlugin.attach(cookie_jar: empty_jar)
 
     assert %{private: %{cookie_jar: _updated_jar}} = Req.get!(req, url: "/redirect-me")
   end
@@ -124,7 +124,7 @@ defmodule HttpCookie.ReqTest do
 
     req =
       Req.new(base_url: "https://example.com", plug: plug, redirect_log_level: false)
-      |> ReqCookieManager.attach(cookie_jar: empty_jar)
+      |> ReqPlugin.attach(cookie_jar: empty_jar)
 
     assert %{private: %{cookie_jar: _updated_jar}} =
              Req.get!(req, url: "/redirect-me", headers: [cookie: "there-can-only-be=one"])
