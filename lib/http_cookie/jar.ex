@@ -9,6 +9,8 @@ defmodule HttpCookie.Jar do
 
   alias HttpCookie
 
+  import HttpCookie.Util, only: [pretty_module: 1]
+
   defstruct [:cookies, :opts]
 
   @type t :: %__MODULE__{
@@ -35,7 +37,7 @@ defmodule HttpCookie.Jar do
 
   - `:max_cookies` - maximum number of cookies stored, positive integer or :infinity, default: 5_000
   - `:max_cookies_per_domain` - maximum number of cookies stored per domain, positive integer or :infinity, default: 100
-  - `:cookie_opts` - options passed to HttpCookie
+  - `:cookie_opts` - options passed to HttpCookie.from_cookie_string/3
   """
   @spec new() :: %__MODULE__{}
   @spec new(opts :: keyword()) :: %__MODULE__{}
@@ -357,7 +359,29 @@ defmodule HttpCookie.Jar do
     end)
   end
 
-  defp validate_opts!(_opts) do
-    # TODO raise if any of the options is invalid!
+  defp validate_opts!(opts) when is_list(opts) do
+    {cookie_opts, opts} = Keyword.pop(opts, :cookie_opts, [])
+    Enum.each(opts, fn {k, v} -> validate_opt!(k, v) end)
+    HttpCookie.validate_opts!(cookie_opts)
+  end
+
+  @max_cookie_opt_keys [:max_cookies, :max_cookies_per_domain]
+
+  defp validate_opt!(k, :infinity) when k in @max_cookie_opt_keys do
+    :ok
+  end
+
+  defp validate_opt!(k, cnt)
+       when k in @max_cookie_opt_keys and is_integer(cnt) and cnt > 0 do
+    :ok
+  end
+
+  defp validate_opt!(k, val) when k in @max_cookie_opt_keys do
+    raise ArgumentError,
+          "[#{pretty_module(__MODULE__)}] invalid value for :#{k} option: #{inspect(val)}\n\n expected :infinity or an integer > 0"
+  end
+
+  defp validate_opt!(k, _) do
+    raise ArgumentError, "[#{pretty_module(__MODULE__)}] invalid option #{inspect(k)}"
   end
 end

@@ -3,6 +3,52 @@ defmodule HttpCookie.JarTest do
 
   alias HttpCookie.Jar
 
+  describe "new/1 validates options" do
+    test "allows valid options" do
+      %Jar{} = Jar.new(max_cookies: 500, max_cookies_per_domain: 100)
+      %Jar{} = Jar.new(max_cookies: :infinity, max_cookies_per_domain: :infinity)
+      %Jar{} = Jar.new(cookie_opts: [max_cookie_size: 1_000, reject_public_suffixes: false])
+    end
+
+    test "raises on unknown option" do
+      assert_raise ArgumentError, "[HttpCookie.Jar] invalid option :hammer_time", fn ->
+        Jar.new(hammer_time: true)
+      end
+    end
+
+    test "raises on unknown HttpCookie option" do
+      assert_raise ArgumentError, "[HttpCookie] invalid option :hammer_time", fn ->
+        Jar.new(cookie_opts: [hammer_time: true])
+      end
+    end
+
+    test "raises on invalid values" do
+      assert_raise ArgumentError,
+                   "[HttpCookie.Jar] invalid value for :max_cookies option: 0\n\n expected :infinity or an integer > 0",
+                   fn -> Jar.new(max_cookies: 0) end
+
+      assert_raise ArgumentError,
+                   "[HttpCookie.Jar] invalid value for :max_cookies option: false\n\n expected :infinity or an integer > 0",
+                   fn -> Jar.new(max_cookies: false) end
+
+      assert_raise ArgumentError,
+                   "[HttpCookie.Jar] invalid value for :max_cookies option: %{what: :now}\n\n expected :infinity or an integer > 0",
+                   fn -> Jar.new(max_cookies: %{what: :now}) end
+
+      assert_raise ArgumentError,
+                   "[HttpCookie.Jar] invalid value for :max_cookies_per_domain option: 0\n\n expected :infinity or an integer > 0",
+                   fn -> Jar.new(max_cookies_per_domain: 0) end
+
+      assert_raise ArgumentError,
+                   "[HttpCookie.Jar] invalid value for :max_cookies_per_domain option: false\n\n expected :infinity or an integer > 0",
+                   fn -> Jar.new(max_cookies_per_domain: false) end
+
+      assert_raise ArgumentError,
+                   "[HttpCookie.Jar] invalid value for :max_cookies_per_domain option: %{what: :now}\n\n expected :infinity or an integer > 0",
+                   fn -> Jar.new(max_cookies_per_domain: %{what: :now}) end
+    end
+  end
+
   describe "put_cookies_from_headers/3" do
     setup :create_jar
 

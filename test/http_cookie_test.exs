@@ -164,6 +164,39 @@ defmodule HttpCookieTest do
     end
   end
 
+  describe "from_cookie_string/2 validates options" do
+    test "allows valid options" do
+      :ok = parse_opts(max_cookie_size: :infinity, reject_public_suffixes: false)
+      :ok = parse_opts(max_cookie_size: 1_000, reject_public_suffixes: true)
+    end
+
+    test "raises on unknown option" do
+      assert_raise ArgumentError, "[HttpCookie] invalid option :hammer_time", fn ->
+        parse_opts(hammer_time: true)
+      end
+    end
+
+    test "raises on invalid values" do
+      assert_raise ArgumentError,
+                   "[HttpCookie] invalid value for :max_cookie_size option: -1\n\n expected :infinity or an integer >= 0",
+                   fn ->
+                     parse_opts(max_cookie_size: -1)
+                   end
+
+      assert_raise ArgumentError,
+                   "[HttpCookie] invalid value for :max_cookie_size option: false\n\n expected :infinity or an integer >= 0",
+                   fn -> parse_opts(max_cookie_size: false) end
+
+      assert_raise ArgumentError,
+                   "[HttpCookie] invalid value for :max_cookie_size option: %{what: :now}\n\n expected :infinity or an integer >= 0",
+                   fn -> parse_opts(max_cookie_size: %{what: :now}) end
+
+      assert_raise ArgumentError,
+                   "[HttpCookie] invalid value for :reject_public_suffixes option: -1\n\n expected true or false",
+                   fn -> parse_opts(reject_public_suffixes: -1) end
+    end
+  end
+
   describe "matches_url?/2" do
     test "for host only cookie" do
       cookie = parse("foo=bar")
@@ -223,5 +256,11 @@ defmodule HttpCookieTest do
   defp parse(set_cookie_header, url \\ "https://example.com") do
     assert {:ok, cookie} = HttpCookie.from_cookie_string(set_cookie_header, URI.parse(url))
     cookie
+  end
+
+  defp parse_opts(opts) do
+    url = URI.parse("https://example.com")
+    {:ok, _cookie} = HttpCookie.from_cookie_string("foo=bar", url, opts)
+    :ok
   end
 end
