@@ -2,8 +2,10 @@
   ignore_modules: [
     HttpCookie.DateParser,
     HttpCookie.DateParser.State,
+    HttpCookie.Jar.DomainCookies,
     HttpCookie.Parser,
     HttpCookie.URL,
+    HttpCookie.Util,
     Inspect.HttpCookie
   ],
   ignore_paths: [],
