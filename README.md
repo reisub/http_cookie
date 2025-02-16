@@ -18,7 +18,23 @@ def deps do
 end
 ```
 
-## Usage with `Req`
+## Usage
+
+```elixir
+url = URI.parse("https://example.com")
+
+# create a cookie jar
+jar = HttpCookie.Jar.new()
+
+# when a response is received, save any cookies that might have been returned
+received_headers = [{"Set-Cookie", "foo=bar"}]
+jar = Jar.put_cookies_from_headers(jar, url, received_headers)
+
+# before making requests, prepare the cookie header
+{:ok, cookie_header_value, jar} = Jar.get_cookie_header_value(jar, url)
+```
+
+### Usage with `Req`
 
 HttpCookie can be used with [Req](https://github.com/wojtekmach/req) to automatically set and parse cookies in HTTP requests:
 
