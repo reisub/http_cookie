@@ -12,7 +12,8 @@ The package can be installed by adding `http_cookie` to your list of dependencie
 def deps do
   [
     {:http_cookie, "~> 0.6.0"},
-    # not needed if the public suffix check is disabled
+    # not needed if the public suffix check is disabled,
+    # but it's highly recommended leaving it enabled
     {:public_suffix, github: "axelson/publicsuffix-elixir"}
   ]
 end
@@ -48,17 +49,3 @@ req =
 %{private: %{cookie_jar: updated_jar}} = Req.get!(req, url: "/one", cookie_jar: empty_jar)
 %{private: %{cookie_jar: updated_jar}} = Req.get!(req, url: "/two", cookie_jar: updated_jar)
 ```
-
-## License
-
-Copyright (c) 2025 Dino Kovač
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
