@@ -7,6 +7,7 @@ defmodule HttpCookie do
 
   alias __MODULE__.{Parser, URL}
   import __MODULE__.Parser, only: [latest_expiry_time: 0]
+  import __MODULE__.Util, only: [pretty_module: 1]
 
   @dialyzer {:nowarn_function, matches_url?: 2}
 
@@ -45,6 +46,7 @@ defmodule HttpCookie do
 
   ## Options
 
+  - `:max_cookie_size` - maximum size of cookie string in bytes, positive integer or :infinity, default: 8_192
   - `:reject_public_suffixes` - controls whether to reject public suffixes to guard against "supercookies", defaults to true
   """
   @spec from_cookie_string(str :: String.t(), request_url :: URI.t()) ::
@@ -52,10 +54,13 @@ defmodule HttpCookie do
   @spec from_cookie_string(str :: String.t(), request_url :: URI.t(), opts :: keyword()) ::
           {:ok, t()} | {:error, atom()}
   def from_cookie_string(str, %URI{} = request_url, opts \\ []) do
-    {name, value, attributes} = Parser.parse_cookie_string(str, request_url)
-    attributes = Enum.reverse(attributes)
+    validate_opts!(opts)
+    max_size = Keyword.get(opts, :max_cookie_size, 8_192)
 
-    with {:ok, cookie} <- new_cookie(name, value),
+    with :ok <- check_size(str, max_size),
+         {name, value, attributes} = Parser.parse_cookie_string(str, request_url),
+         attributes = Enum.reverse(attributes),
+         {:ok, cookie} <- new_cookie(name, value),
          cookie = set_expiry_time(cookie, attributes),
          cookie = set_domain(cookie, attributes),
          {:ok, cookie} <- check_public_suffix(cookie, request_url, opts),
@@ -84,6 +89,7 @@ defmodule HttpCookie do
   Uses the current time if no time is provided.
   """
   @spec expired?(cookie :: t()) :: boolean()
+  @spec expired?(cookie :: t(), now :: DateTime.t()) :: boolean()
   def expired?(cookie, now \\ DateTime.utc_now()) do
     DateTime.after?(now, cookie.expiry_time)
   end
@@ -146,6 +152,47 @@ defmodule HttpCookie do
     %__MODULE__{cookie | last_access_time: now}
   end
 
+  @doc false
+  @spec validate_opts!(opts :: keyword()) :: :ok
+  def validate_opts!(opts) when is_list(opts) do
+    Enum.each(opts, fn {k, v} -> validate_opt!(k, v) end)
+
+    if Keyword.get(opts, :reject_public_suffixes, true) do
+      ensure_public_suffix!()
+    else
+      :ok
+    end
+  end
+
+  defp validate_opt!(:max_cookie_size, :infinity), do: :ok
+
+  defp validate_opt!(:max_cookie_size, cnt) when is_integer(cnt) and cnt >= 0, do: :ok
+
+  defp validate_opt!(:max_cookie_size = k, val) do
+    raise ArgumentError,
+          "[#{pretty_module(__MODULE__)}] invalid value for :#{k} option: #{inspect(val)}\n\n expected :infinity or an integer >= 0"
+  end
+
+  defp validate_opt!(:reject_public_suffixes, b) when is_boolean(b), do: :ok
+
+  defp validate_opt!(:reject_public_suffixes = k, val) do
+    raise ArgumentError,
+          "[#{pretty_module(__MODULE__)}] invalid value for :#{k} option: #{inspect(val)}\n\n expected true or false"
+  end
+
+  defp validate_opt!(k, _) do
+    raise ArgumentError, "[#{pretty_module(__MODULE__)}] invalid option #{inspect(k)}"
+  end
+
+  defp ensure_public_suffix! do
+    if Code.ensure_loaded?(PublicSuffix) do
+      :ok
+    else
+      raise ArgumentError,
+            "[#{pretty_module(__MODULE__)}] missing :public_suffix library, add it to your dependencies or set reject_public_suffixes: false"
+    end
+  end
+
   defp matches_domain?(%{domain: domain}, domain), do: true
   defp matches_domain?(%{host_only?: true}, _domain), do: false
 
@@ -162,7 +209,7 @@ defmodule HttpCookie do
   defp new_cookie(name, value) do
     now = DateTime.utc_now()
 
-    cookie = %HttpCookie{
+    cookie = %__MODULE__{
       name: name,
       value: value,
       creation_time: now,
@@ -323,4 +370,8 @@ defmodule HttpCookie do
       nil -> %{cookie | http_only?: false}
     end
   end
+
+  defp check_size(_str, :infinity), do: :ok
+  defp check_size(str, max_size) when byte_size(str) <= max_size, do: :ok
+  defp check_size(_str, _max_size), do: {:error, :cookie_exceeds_max_size}
 end

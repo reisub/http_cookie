@@ -10,12 +10,19 @@ concurrency:
 
 jobs:
   test:
-    name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+    name: OTP ${{matrix.pair.otp}} / Elixir ${{matrix.pair.elixir}}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        otp: ['24.3.4.15', '25.3.2.8', '26.2.1']
-        elixir: ['1.15.7', '1.16.0']
+        include:
+          - pair:
+              elixir: "1.15.0"
+              otp: "24.3.4.10"
+              benchmark: false
+          - pair:
+              elixir: "1.18.2"
+              otp: "27.2.2"
+              benchmark: true
     env:
       MIX_ENV: test
     steps:
@@ -24,8 +31,8 @@ jobs:
       - name: Install Erlang & Elixir
         uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
+          otp-version: ${{matrix.pair.otp}}
+          elixir-version: ${{matrix.pair.elixir}}
 
       - name: Cache mix dependencies
         uses: actions/cache@v3
@@ -33,9 +40,9 @@ jobs:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ matrix.pair.elixir }}-${{ matrix.pair.otp }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-
+            ${{ runner.os }}-mix-${{ matrix.pair.elixir }}-${{ matrix.pair.otp }}-
 
       # Cache key based on Erlang/Elixir version and the mix.lock hash
       - name: Restore PLT cache
@@ -43,9 +50,9 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           key: |
-            plt-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+            plt-${{ runner.os }}-${{ matrix.pair.otp }}-${{ matrix.pair.elixir }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            plt-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-
+            plt-${{ runner.os }}-${{ matrix.pair.otp }}-${{ matrix.pair.elixir }}-
           path: |
             priv/plts
 
@@ -68,7 +75,7 @@ jobs:
         if: steps.plt_cache.outputs.cache-hit != 'true'
         with:
           key: |
-            plt-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+            plt-${{ runner.os }}-${{ matrix.pair.otp }}-${{ matrix.pair.elixir }}-${{ hashFiles('**/mix.lock') }}
           path: |
             priv/plts
 
@@ -79,4 +86,12 @@ jobs:
         run: mix compile --warnings-as-errors
 
       - name: Run tests
-        run: mix test --warnings-as-errors
+        run: mix test --warnings-as-errors --include slow:true --include benchmark:true
+        if: ${{ matrix.pair.benchmark }}
+
+      - name: Run tests
+        run: mix test --warnings-as-errors --include slow:true
+        if: ${{ ! matrix.pair.benchmark }}
+
+      - name: Check docs
+        run: mix doctor
