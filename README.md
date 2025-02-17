@@ -1,6 +1,9 @@
 # HttpCookie
 
-[![License](https://img.shields.io/hexpm/l/http_cookie.svg)](https://github.com/reisub/http_cookie/blob/main/README.md#license)
+[![CI](https://github.com/reisub/http_cookie/actions/workflows/ci.yml/badge.svg)](https://github.com/reisub/http_cookie/actions/workflows/ci.yml)
+[![License](https://img.shields.io/hexpm/l/http_cookie.svg)](https://github.com/reisub/http_cookie/blob/main/LICENSE)
+[![Version](https://img.shields.io/hexpm/v/http_cookie.svg)](https://hex.pm/packages/http_cookie)
+[![Hex Docs](https://img.shields.io/badge/documentation-gray.svg)](https://hexdocs.pm/http_cookie)
 
 [RFC6265](https://datatracker.ietf.org/doc/html/rfc6265)-compliant HTTP Cookie implementation for Elixir.
 
@@ -11,7 +14,7 @@ The package can be installed by adding `http_cookie` to your list of dependencie
 ```elixir
 def deps do
   [
-    {:http_cookie, "~> 0.6.0"},
+    {:http_cookie, "~> 0.7.0"},
     # not needed if the public suffix check is disabled,
     # but it's highly recommended leaving it enabled
     {:public_suffix, github: "axelson/publicsuffix-elixir"}
