@@ -60,19 +60,11 @@ defmodule HttpCookieTest do
       assert %{http_only?: false} = parse("foo=bar")
     end
 
-    test "rejects 'supercookies' by default" do
+    test "rejects 'supercookies'" do
       url = URI.parse("https://example.co.uk")
 
       assert {:error, :cookie_domain_public_suffix} =
                HttpCookie.from_cookie_string("foo=bar; Domain=co.uk", url)
-    end
-
-    test "allows 'supercookies' when reject_public_suffixes: false" do
-      url = URI.parse("https://example.co.uk")
-      opts = [reject_public_suffixes: false]
-
-      assert {:ok, _cookie} =
-               HttpCookie.from_cookie_string("foo=bar; Domain=co.uk", url, opts)
     end
 
     test "parses netscape style pre-RFC cookie" do
@@ -166,8 +158,8 @@ defmodule HttpCookieTest do
 
   describe "from_cookie_string/2 validates options" do
     test "allows valid options" do
-      :ok = parse_opts(max_cookie_size: :infinity, reject_public_suffixes: false)
-      :ok = parse_opts(max_cookie_size: 1_000, reject_public_suffixes: true)
+      :ok = parse_opts(max_cookie_size: :infinity)
+      :ok = parse_opts(max_cookie_size: 1_000)
     end
 
     test "raises on unknown option" do
@@ -190,10 +182,6 @@ defmodule HttpCookieTest do
       assert_raise ArgumentError,
                    "[HttpCookie] invalid value for :max_cookie_size option: %{what: :now}\n\n expected :infinity or an integer >= 0",
                    fn -> parse_opts(max_cookie_size: %{what: :now}) end
-
-      assert_raise ArgumentError,
-                   "[HttpCookie] invalid value for :reject_public_suffixes option: -1\n\n expected true or false",
-                   fn -> parse_opts(reject_public_suffixes: -1) end
     end
   end
 

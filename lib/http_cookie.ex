@@ -47,7 +47,6 @@ defmodule HttpCookie do
   ## Options
 
   - `:max_cookie_size` - maximum size of cookie string in bytes, positive integer or :infinity, default: 8_192
-  - `:reject_public_suffixes` - controls whether to reject public suffixes to guard against "supercookies", defaults to true
   """
   @spec from_cookie_string(str :: String.t(), request_url :: URI.t()) ::
           {:ok, t()} | {:error, atom()}
@@ -63,7 +62,7 @@ defmodule HttpCookie do
          {:ok, cookie} <- new_cookie(name, value),
          cookie = set_expiry_time(cookie, attributes),
          cookie = set_domain(cookie, attributes),
-         {:ok, cookie} <- check_public_suffix(cookie, request_url, opts),
+         {:ok, cookie} <- check_public_suffix(cookie, request_url),
          {:ok, cookie} <- check_domain(cookie, request_url) do
       cookie =
         cookie
@@ -156,12 +155,6 @@ defmodule HttpCookie do
   @spec validate_opts!(opts :: keyword()) :: :ok
   def validate_opts!(opts) when is_list(opts) do
     Enum.each(opts, fn {k, v} -> validate_opt!(k, v) end)
-
-    if Keyword.get(opts, :reject_public_suffixes, true) do
-      ensure_public_suffix!()
-    else
-      :ok
-    end
   end
 
   defp validate_opt!(:max_cookie_size, :infinity), do: :ok
@@ -173,24 +166,8 @@ defmodule HttpCookie do
           "[#{pretty_module(__MODULE__)}] invalid value for :#{k} option: #{inspect(val)}\n\n expected :infinity or an integer >= 0"
   end
 
-  defp validate_opt!(:reject_public_suffixes, b) when is_boolean(b), do: :ok
-
-  defp validate_opt!(:reject_public_suffixes = k, val) do
-    raise ArgumentError,
-          "[#{pretty_module(__MODULE__)}] invalid value for :#{k} option: #{inspect(val)}\n\n expected true or false"
-  end
-
   defp validate_opt!(k, _) do
     raise ArgumentError, "[#{pretty_module(__MODULE__)}] invalid option #{inspect(k)}"
-  end
-
-  defp ensure_public_suffix! do
-    if Code.ensure_loaded?(PublicSuffix) do
-      :ok
-    else
-      raise ArgumentError,
-            "[#{pretty_module(__MODULE__)}] missing :public_suffix library, add it to your dependencies or set reject_public_suffixes: false"
-    end
   end
 
   defp matches_domain?(%{domain: domain}, domain), do: true
@@ -285,23 +262,19 @@ defmodule HttpCookie do
   #         Otherwise:
   #
   #            Ignore the cookie entirely and abort these steps.
-  defp check_public_suffix(cookie, request_url, opts) do
-    if Keyword.get(opts, :reject_public_suffixes, true) do
-      request_domain = URL.canonicalize_domain(request_url.host)
-      public_suffix? = URL.public_suffix?(cookie.domain)
+  defp check_public_suffix(cookie, request_url) do
+    request_domain = URL.canonicalize_domain(request_url.host)
+    public_suffix? = URL.public_suffix?(cookie.domain)
 
-      cond do
-        public_suffix? and cookie.domain == request_domain ->
-          {:ok, %{cookie | domain: ""}}
+    cond do
+      public_suffix? and cookie.domain == request_domain ->
+        {:ok, %{cookie | domain: ""}}
 
-        public_suffix? ->
-          {:error, :cookie_domain_public_suffix}
+      public_suffix? ->
+        {:error, :cookie_domain_public_suffix}
 
-        true ->
-          {:ok, cookie}
-      end
-    else
-      {:ok, cookie}
+      true ->
+        {:ok, cookie}
     end
   end
 

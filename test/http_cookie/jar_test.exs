@@ -7,7 +7,7 @@ defmodule HttpCookie.JarTest do
     test "allows valid options" do
       %Jar{} = Jar.new(max_cookies: 500, max_cookies_per_domain: 100)
       %Jar{} = Jar.new(max_cookies: :infinity, max_cookies_per_domain: :infinity)
-      %Jar{} = Jar.new(cookie_opts: [max_cookie_size: 1_000, reject_public_suffixes: false])
+      %Jar{} = Jar.new(cookie_opts: [max_cookie_size: 1_000])
     end
 
     test "raises on unknown option" do

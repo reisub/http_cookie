@@ -121,22 +121,8 @@ defmodule HttpCookie.URL do
   # the Mozilla project at <http://publicsuffix.org/>.
   def public_suffix?(""), do: false
 
-  if Code.ensure_loaded?(PublicSuffix) do
-    def public_suffix?(domain) do
-      domain == PublicSuffix.public_suffix(domain)
-    end
-  else
-    def public_suffix?(_domain) do
-      # work around for typing violation that's reported
-      # because the function only returns false when the
-      # dependency is missing - but it should not be called in that
-      # case anyway because the option velidation should fail before that
-      if :rand.uniform(10) <= 10 do
-        raise "Missing :public_suffix dependency"
-      else
-        true
-      end
-    end
+  def public_suffix?(domain) do
+    PublicSufx.public_suffix?(domain)
   end
 
   def ip_address?(str) do
