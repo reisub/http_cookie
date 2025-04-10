@@ -36,7 +36,7 @@ defmodule HttpCookie.MixProject do
         "GitHub" => @source_url,
         "Changelog" => "https://hexdocs.pm/http_cookie/changelog.html"
       },
-      exclude_patterns: ~w[priv/plts]
+      exclude_patterns: ~w[priv/plts lib/http_cookie/date_parser.ex.exs]
     ]
   end
 
