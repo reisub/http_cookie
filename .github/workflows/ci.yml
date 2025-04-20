@@ -16,12 +16,12 @@ jobs:
       matrix:
         include:
           - pair:
-              elixir: "1.15.0"
+              elixir: "1.14.0"
               otp: "24.3.4.10"
               benchmark: false
           - pair:
-              elixir: "1.18.2"
-              otp: "27.2.2"
+              elixir: "1.18.3"
+              otp: "27.3.3"
               benchmark: true
     env:
       MIX_ENV: test
