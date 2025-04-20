@@ -1,7 +1,7 @@
 defmodule HttpCookie.MixProject do
   use Mix.Project
 
-  @version "0.8.0"
+  @version "0.8.1"
   @source_url "https://github.com/reisub/http_cookie"
 
   def project do
@@ -43,7 +43,7 @@ defmodule HttpCookie.MixProject do
   defp deps do
     [
       {:idna, "~> 6.1"},
-      {:public_sufx, "~> 0.5.0"},
+      {:public_sufx, "~> 0.6.0"},
       {:nimble_parsec, "~> 1.0", only: [:dev, :test]},
       {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:req, "~> 0.5.0", optional: true},
