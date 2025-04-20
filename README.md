@@ -29,10 +29,10 @@ jar = HttpCookie.Jar.new()
 
 # when a response is received, save any cookies that might have been returned
 received_headers = [{"Set-Cookie", "foo=bar"}]
-jar = Jar.put_cookies_from_headers(jar, url, received_headers)
+jar = HttpCookie.Jar.put_cookies_from_headers(jar, url, received_headers)
 
 # before making requests, prepare the cookie header
-{:ok, cookie_header_value, jar} = Jar.get_cookie_header_value(jar, url)
+{:ok, cookie_header_value, jar} = HttpCookie.Jar.get_cookie_header_value(jar, url)
 ```
 
 ### Usage with `Req`
