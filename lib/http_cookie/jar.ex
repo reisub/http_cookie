@@ -244,7 +244,7 @@ defmodule HttpCookie.Jar do
       rhs_path_size = byte_size(rhs_cookie.path)
 
       if lhs_path_size == rhs_path_size do
-        DateTime.before?(lhs_cookie.creation_time, rhs_cookie.creation_time)
+        DateTime.compare(lhs_cookie.creation_time, rhs_cookie.creation_time) == :lt
       else
         lhs_path_size > rhs_path_size
       end

@@ -58,7 +58,7 @@ defmodule HttpCookie.ReqTest do
       |> Map.fetch!({"foo", "/"})
       |> Map.fetch!(:last_access_time)
 
-    assert DateTime.after?(updated_access_time, original_access_time)
+    assert DateTime.compare(updated_access_time, original_access_time) == :gt
   end
 
   test "picks up cookies from redirect response" do
