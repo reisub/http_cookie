@@ -302,7 +302,7 @@ defmodule HttpCookie.JarTest do
         |> Map.values()
         |> hd()
 
-      assert DateTime.after?(updated_cookie.last_access_time, ~U[2024-04-01 12:00:00Z])
+      assert DateTime.compare(updated_cookie.last_access_time, ~U[2024-04-01 12:00:00Z]) == :gt
     end
   end
 

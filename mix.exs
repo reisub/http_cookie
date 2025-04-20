@@ -8,7 +8,7 @@ defmodule HttpCookie.MixProject do
     [
       app: :http_cookie,
       version: @version,
-      elixir: "~> 1.15",
+      elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       description: description(),
       package: package(),

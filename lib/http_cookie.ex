@@ -90,7 +90,7 @@ defmodule HttpCookie do
   @spec expired?(cookie :: t()) :: boolean()
   @spec expired?(cookie :: t(), now :: DateTime.t()) :: boolean()
   def expired?(cookie, now \\ DateTime.utc_now()) do
-    DateTime.after?(now, cookie.expiry_time)
+    DateTime.compare(now, cookie.expiry_time) == :gt
   end
 
   # 5.4.  The Cookie Header

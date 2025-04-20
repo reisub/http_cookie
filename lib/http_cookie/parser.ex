@@ -138,10 +138,10 @@ defmodule HttpCookie.Parser do
     case DateParser.parse(val) do
       {:ok, dt} ->
         cond do
-          DateTime.after?(dt, latest_expiry_time()) ->
+          DateTime.compare(dt, latest_expiry_time()) == :gt ->
             {"Expires", latest_expiry_time()}
 
-          DateTime.before?(dt, earliest_expiry_time()) ->
+          DateTime.compare(dt, earliest_expiry_time()) == :lt ->
             {"Expires", earliest_expiry_time()}
 
           true ->
