@@ -49,3 +49,15 @@ req =
 %{private: %{cookie_jar: updated_jar}} = Req.get!(req, url: "/one", cookie_jar: empty_jar)
 %{private: %{cookie_jar: updated_jar}} = Req.get!(req, url: "/two", cookie_jar: updated_jar)
 ```
+
+### Usage with `Tesla`
+
+HttpCookie can be used with [Tesla](https://github.com/elixir-tesla/tesla) to automatically set and parse cookies in HTTP requests:
+
+```elixir
+{:ok, server_pid} = HttpCookie.Jar.Server.start_link()
+tesla = Tesla.client([{HttpCookie.TeslaMiddleware, jar_server: server_pid}])
+
+Tesla.get!(tesla, "https://example.com/one")
+Tesla.get!(tesla, "https://example.com/two")
+```
