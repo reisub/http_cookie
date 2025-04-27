@@ -9,6 +9,7 @@ defmodule HttpCookie.MixProject do
       app: :http_cookie,
       version: @version,
       elixir: "~> 1.14",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       description: description(),
       package: package(),
@@ -24,6 +25,10 @@ defmodule HttpCookie.MixProject do
       extra_applications: [:logger]
     ]
   end
+
+  # Specifies which paths to compile per environment.
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp description do
     "Standards-compliant HTTP Cookie implementation."
@@ -47,6 +52,7 @@ defmodule HttpCookie.MixProject do
       {:nimble_parsec, "~> 1.0", only: [:dev, :test]},
       {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:req, "~> 0.5.0", optional: true},
+      {:tesla, "~> 1.11", optional: true},
       {:plug, "~> 1.0", only: :test},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:benchee, "~> 1.0", only: [:dev, :test]},
