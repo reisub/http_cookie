@@ -1,7 +1,7 @@
 defmodule HttpCookie.MixProject do
   use Mix.Project
 
-  @version "0.8.1"
+  @version "0.9.0"
   @source_url "https://github.com/reisub/http_cookie"
 
   def project do
@@ -31,7 +31,7 @@ defmodule HttpCookie.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   defp description do
-    "Standards-compliant HTTP Cookie implementation."
+    "Standards-compliant HTTP Cookie implementation, with support for Req and Tesla."
   end
 
   defp package do
