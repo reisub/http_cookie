@@ -52,7 +52,7 @@ defmodule HttpCookie.Jar do
 
   @doc """
   Processes the response header list for the given request URL.
-  Parses set-cookie/set-cookie2 headers and stores valid cookies.
+  Parses set-cookie headers and stores valid cookies.
   """
   @spec put_cookies_from_headers(jar :: t(), request_url :: URI.t(), headers :: list()) :: t()
   def put_cookies_from_headers(jar, request_url, headers) do
@@ -60,7 +60,7 @@ defmodule HttpCookie.Jar do
 
     cookies =
       headers
-      |> Enum.filter(fn {k, _} -> k =~ ~r/^set-cookie2?$/i end)
+      |> Enum.filter(fn {k, _} -> k =~ ~r/^set-cookie$/i end)
       |> Enum.flat_map(fn {_, header} ->
         case HttpCookie.from_cookie_string(header, request_url, cookie_opts) do
           {:ok, cookie} -> [cookie]

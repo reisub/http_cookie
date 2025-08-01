@@ -52,7 +52,7 @@ defmodule HttpCookie.JarTest do
   describe "put_cookies_from_headers/3" do
     setup :create_jar
 
-    for header <- ~w[set-cookie Set-Cookie set-cookie2 Set-Cookie2] do
+    for header <- ~w[set-cookie Set-Cookie] do
       @header header
 
       test "parses #{@header} header", ctx do
@@ -93,7 +93,7 @@ defmodule HttpCookie.JarTest do
               ], _} = Jar.get_matching_cookies(jar, ctx.url)
     end
 
-    test "handles no set-cookie/set-cookie2 headers", ctx do
+    test "handles no set-cookie headers", ctx do
       headers = [
         {"Content-Type", "application/json"}
       ]
