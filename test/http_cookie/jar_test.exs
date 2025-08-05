@@ -102,6 +102,27 @@ defmodule HttpCookie.JarTest do
       assert {[], _} = Jar.get_matching_cookies(jar, ctx.url)
     end
 
+    test "handles cookie names case-sensitively", ctx do
+      headers = [
+        {"Content-Type", "application/json"},
+        {"set-cookie", "foo=bar"},
+        {"set-cookie", "FOO=baz"}
+      ]
+
+      jar = Jar.put_cookies_from_headers(ctx.jar, ctx.url, headers)
+
+      assert {[
+                %{
+                  name: "foo",
+                  value: "bar"
+                },
+                %{
+                  name: "FOO",
+                  value: "baz"
+                }
+              ], _} = Jar.get_matching_cookies(jar, ctx.url)
+    end
+
     test "accumulates cookies", ctx do
       {:ok, cookie} = HttpCookie.from_cookie_string("foo=bar", ctx.url)
       jar = Jar.put_cookie(ctx.jar, cookie)
