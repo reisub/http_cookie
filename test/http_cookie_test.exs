@@ -9,7 +9,7 @@ defmodule HttpCookieTest do
       latest_expiry_time = latest_expiry_time()
 
       assert %{
-               expiry_time: ~U[2045-12-31 16:17:18Z],
+               expiry_time: _expiry_time,
                persistent?: true
              } = parse("foo=bar; Expires=Sun, 31-Dec-2045 16:17:18 GMT")
 
@@ -154,6 +154,18 @@ defmodule HttpCookieTest do
                  max_cookie_size: 99
                )
     end
+
+    test "enforces max cookie lifetime" do
+      set_cookie_header_with_max_age = ~s(foo=bar; Max-Age=34560010)
+
+      assert %{expiry_time: expiry_time} = parse(set_cookie_header_with_max_age)
+      assert DateTime.diff(expiry_time, DateTime.utc_now(), :second) <= 34_560_000
+
+      set_cookie_header_with_expires = ~s(foo=bar; Expires=Thu, 31-Dec-2099 16:17:18 GMT)
+
+      assert %{expiry_time: expiry_time} = parse(set_cookie_header_with_expires)
+      assert DateTime.diff(expiry_time, DateTime.utc_now(), :second) <= 34_560_000
+    end
   end
 
   describe "from_cookie_string/2 validates options" do
@@ -234,11 +246,15 @@ defmodule HttpCookieTest do
   end
 
   test "expired?/2" do
-    cookie = parse("foo=bar; Expires=Sun, 31-Dec-2045 16:17:18 GMT")
+    cookie = parse("foo=bar; Max-Age=3600")
+
+    in_one_hour =
+      DateTime.utc_now()
+      |> DateTime.add(3_600, :second)
 
     refute HttpCookie.expired?(cookie)
-    refute HttpCookie.expired?(cookie, ~U[2045-12-31 16:17:18Z])
-    assert HttpCookie.expired?(cookie, ~U[2045-12-31 16:17:19Z])
+    refute HttpCookie.expired?(cookie, DateTime.add(in_one_hour, -1, :second))
+    assert HttpCookie.expired?(cookie, in_one_hour)
   end
 
   defp parse(set_cookie_header, url \\ "https://example.com") do

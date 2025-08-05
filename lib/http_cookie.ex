@@ -57,7 +57,7 @@ defmodule HttpCookie do
     max_size = Keyword.get(opts, :max_cookie_size, 8_192)
 
     with :ok <- check_size(str, max_size),
-         {name, value, attributes} = Parser.parse_cookie_string(str, request_url),
+         {name, value, attributes} = Parser.parse_cookie_string(str, request_url, opts),
          attributes = Enum.reverse(attributes),
          {:ok, cookie} <- new_cookie(name, value),
          cookie = set_expiry_time(cookie, attributes),

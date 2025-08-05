@@ -9,6 +9,22 @@ defmodule HttpCookie.Parser do
   @spec latest_expiry_time() :: DateTime.t()
   def latest_expiry_time, do: ~U[9999-12-31T23:59:59Z]
 
+  # 5.5.  Cookie Lifetime Limits
+
+  #  	   When processing cookies with a specified lifetime, either with the
+  #  	   Expires or with the Max-Age attribute, the user agent MUST limit the
+  #  	   maximum age of the cookie.  The limit SHOULD NOT be greater than 400
+  #  	   days (34560000 seconds) in the future.  The RECOMMENDED limit is 400
+  #  	   days in the future, but the user agent MAY adjust the limit (see
+  #  	   Section 7.2).  Expires or Max-Age attributes that specify a lifetime
+  #  	   longer than the limit MUST be reduced to the limit.
+
+  @spec max_cookie_lifetime(opts :: keyword()) :: DateTime.t()
+  def max_cookie_lifetime(_opts) do
+    DateTime.utc_now()
+    |> DateTime.add(34_560_000, :second)
+  end
+
   # 5.2.  The Set-Cookie Header
   # [...]
   # A user agent MUST use an algorithm equivalent to the following
@@ -43,7 +59,7 @@ defmodule HttpCookie.Parser do
   #
   # 6.  The cookie-name is the name string, and the cookie-value is the
   #     value string.
-  def parse_cookie_string(str, request_url) do
+  def parse_cookie_string(str, request_url, opts) do
     case String.split(str, ";", parts: 2) do
       [name_value_pair] ->
         {name, value} = parse_key_value_pair(name_value_pair)
@@ -51,7 +67,7 @@ defmodule HttpCookie.Parser do
 
       [name_value_pair, unparsed_attributes] ->
         {name, value} = parse_key_value_pair(name_value_pair)
-        attributes = parse_attributes(unparsed_attributes, request_url)
+        attributes = parse_attributes(unparsed_attributes, request_url, opts)
         {name, value, attributes}
     end
   end
@@ -102,13 +118,13 @@ defmodule HttpCookie.Parser do
   #     attributes with unrecognized attribute-names are ignored.)
   #
   # 7.  Return to Step 1 of this algorithm.
-  defp parse_attributes(unparsed_attributes, request_url) do
+  defp parse_attributes(unparsed_attributes, request_url, opts) do
     unparsed_attributes
     |> String.split(";")
     |> Enum.map(&parse_key_value_pair/1)
     |> Enum.map(fn {name, val} ->
       name = String.downcase(name)
-      parse_attribute({name, val}, request_url)
+      parse_attribute({name, val}, request_url, opts)
     end)
     |> Enum.reject(&is_nil/1)
   end
@@ -134,12 +150,14 @@ defmodule HttpCookie.Parser do
   #
   #    Append an attribute to the cookie-attribute-list with an attribute-
   #    name of Expires and an attribute-value of expiry-time.
-  defp parse_attribute({"expires", val}, _request_url) do
+  defp parse_attribute({"expires", val}, _request_url, opts) do
     case DateParser.parse(val) do
       {:ok, dt} ->
+        max_cookie_lifetime = max_cookie_lifetime(opts)
+
         cond do
-          DateTime.compare(dt, latest_expiry_time()) == :gt ->
-            {"Expires", latest_expiry_time()}
+          DateTime.compare(dt, max_cookie_lifetime) == :gt ->
+            {"Expires", max_cookie_lifetime}
 
           DateTime.compare(dt, earliest_expiry_time()) == :lt ->
             {"Expires", earliest_expiry_time()}
@@ -172,17 +190,23 @@ defmodule HttpCookie.Parser do
   #
   #    Append an attribute to the cookie-attribute-list with an attribute-
   #    name of Max-Age and an attribute-value of expiry-time.
-  defp parse_attribute({"max-age", val}, _request_url) do
+  defp parse_attribute({"max-age", val}, _request_url, opts) do
     case Integer.parse(val) do
       {seconds, ""} when seconds <= 0 ->
         {"Max-Age", earliest_expiry_time()}
 
       {seconds, ""} when seconds > 0 ->
+        max_cookie_lifetime = max_cookie_lifetime(opts)
+
         expiry_time =
           DateTime.utc_now()
           |> DateTime.add(seconds, :second)
 
-        {"Max-Age", expiry_time}
+        if DateTime.compare(expiry_time, max_cookie_lifetime) == :gt do
+          {"Max-Age", max_cookie_lifetime}
+        else
+          {"Max-Age", expiry_time}
+        end
 
       _ ->
         # invalid values are ignored
@@ -211,9 +235,9 @@ defmodule HttpCookie.Parser do
   #
   #    Append an attribute to the cookie-attribute-list with an attribute-
   #    name of Domain and an attribute-value of cookie-domain.
-  defp parse_attribute({"domain", ""}, _request_url), do: nil
+  defp parse_attribute({"domain", ""}, _request_url, _opts), do: nil
 
-  defp parse_attribute({"domain", val}, _request_url) do
+  defp parse_attribute({"domain", val}, _request_url, _opts) do
     domain =
       case val do
         "." <> rest -> rest
@@ -239,11 +263,11 @@ defmodule HttpCookie.Parser do
   #
   #    Append an attribute to the cookie-attribute-list with an attribute-
   #    name of Path and an attribute-value of cookie-path.
-  defp parse_attribute({"path", "/" <> path}, _request_url) do
+  defp parse_attribute({"path", "/" <> path}, _request_url, _opts) do
     {"Path", "/#{path}"}
   end
 
-  defp parse_attribute({"path", _val}, request_url) do
+  defp parse_attribute({"path", _val}, request_url, _opts) do
     {"Path", URL.default_path(request_url)}
   end
 
@@ -252,7 +276,7 @@ defmodule HttpCookie.Parser do
   #    If the attribute-name case-insensitively matches the string "Secure",
   #    the user agent MUST append an attribute to the cookie-attribute-list
   #    with an attribute-name of Secure and an empty attribute-value.
-  defp parse_attribute({"secure", _val}, _request_url) do
+  defp parse_attribute({"secure", _val}, _request_url, _opts) do
     {"Secure", ""}
   end
 
@@ -262,12 +286,12 @@ defmodule HttpCookie.Parser do
   #    "HttpOnly", the user agent MUST append an attribute to the cookie-
   #    attribute-list with an attribute-name of HttpOnly and an empty
   #    attribute-value.
-  defp parse_attribute({"httponly", _val}, _request_url) do
+  defp parse_attribute({"httponly", _val}, _request_url, _opts) do
     {"HttpOnly", ""}
   end
 
   # attributes with unrecognized attribute-names are ignored
-  defp parse_attribute({_name, _val}, _request_url), do: nil
+  defp parse_attribute({_name, _val}, _request_url, _opts), do: nil
 
   defp trim_wsp(str) do
     # RFC 5234, appendix-B.1 defines whitespace (WSP) as
