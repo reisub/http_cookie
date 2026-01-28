@@ -147,8 +147,8 @@ defmodule HttpCookie do
   """
   @spec update_last_access_time(cookie :: t()) :: t()
   @spec update_last_access_time(cookie :: t(), DateTime.t()) :: t()
-  def update_last_access_time(cookie, now \\ DateTime.utc_now()) do
-    %__MODULE__{cookie | last_access_time: now}
+  def update_last_access_time(%__MODULE__{} = cookie, now \\ DateTime.utc_now()) do
+    %{cookie | last_access_time: now}
   end
 
   @doc false

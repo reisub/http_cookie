@@ -4,8 +4,6 @@
 defmodule HttpCookie.DateParser do
   @moduledoc false
 
-  require Logger
-
   defmodule State do
     @moduledoc false
     defstruct ~w[time day_of_month month year]a
