@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-01-28
+
+### Fixed
+
+- Warnings emitted by Elixir 1.20.0-rc.1 (thanks @GRoguelon!)
+
 ## [0.9.0] - 2025-04-27
 
 ### Added
@@ -22,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - switched out the optional dep on `axelson/publicsuffix-elixir` for [public_sufx](https://hex.pm/packages/public_sufx), a fork that's published on hex.pm
-- removed the `:reject_public_suffixes` option, public suffixes are no always rejected to guard against 'supercookies'
+- removed the `:reject_public_suffixes` option, public suffixes are now always rejected to guard against 'supercookies'
 
 ## [0.7.0] - 2025-02-17
 
