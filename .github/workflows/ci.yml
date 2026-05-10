@@ -38,7 +38,7 @@ jobs:
           elixir-version: ${{matrix.pair.elixir}}
 
       - name: Cache mix dependencies
-        uses: actions/cache@6f8efc29b200d32929f49075959781ed54ec270c # v3.5.0
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             deps
@@ -50,7 +50,7 @@ jobs:
       # Cache key based on Erlang/Elixir version and the mix.lock hash
       - name: Restore PLT cache
         id: plt_cache
-        uses: actions/cache/restore@6f8efc29b200d32929f49075959781ed54ec270c # v3.5.0
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           key: |
             plt-${{ runner.os }}-${{ matrix.pair.otp }}-${{ matrix.pair.elixir }}-${{ hashFiles('**/mix.lock') }}
@@ -74,7 +74,7 @@ jobs:
       # so we separate the cache restore and save steps in case running dialyzer fails.
       - name: Save PLT cache
         id: plt_cache_save
-        uses: actions/cache/save@6f8efc29b200d32929f49075959781ed54ec270c # v3.5.0
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         if: steps.plt_cache.outputs.cache-hit != 'true'
         with:
           key: |
@@ -109,7 +109,7 @@ jobs:
           version-type: strict
 
       - name: Cache mix dependencies
-        uses: actions/cache@6f8efc29b200d32929f49075959781ed54ec270c # v3.5.0
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             deps
