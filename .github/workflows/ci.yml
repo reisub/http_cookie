@@ -23,8 +23,8 @@ jobs:
               otp: "24.3.4.10"
               benchmark: false
           - pair:
-              elixir: "1.18.3"
-              otp: "27.3.3"
+              elixir: "1.19.5"
+              otp: "28.5"
               benchmark: true
     env:
       MIX_ENV: test
