@@ -47,8 +47,8 @@ defmodule HttpCookie.MixProject do
 
   defp deps do
     [
-      {:idna, "~> 6.1"},
-      {:public_sufx, "~> 0.6.0"},
+      {:idna, "~> 7.1"},
+      {:public_sufx, "~> 0.7"},
       {:nimble_parsec, "~> 1.0", only: [:dev, :test]},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:doctor, "~> 0.22.0", only: [:dev, :test]},
