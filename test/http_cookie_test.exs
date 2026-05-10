@@ -1,8 +1,9 @@
 defmodule HttpCookieTest do
   use ExUnit.Case, async: true
 
-  alias HttpCookie
   import HttpCookie.Parser, only: [latest_expiry_time: 0]
+
+  alias HttpCookie
 
   describe "from_cookie_string/2" do
     test "sets expiry_time and persistent? flag" do
@@ -121,11 +122,10 @@ defmodule HttpCookieTest do
         |> Enum.join(" ")
         |> String.split(" ")
         |> Enum.chunk_every(2)
-        |> Enum.map(fn
+        |> Enum.map_join("; ", fn
           [k, v] -> "#{k}=#{v}"
           [k] -> "#{k}"
         end)
-        |> Enum.join("; ")
 
       assert {:error, :cookie_exceeds_max_size} =
                HttpCookie.from_cookie_string(String.slice(huge_str, 0, 8193), url)
@@ -158,8 +158,8 @@ defmodule HttpCookieTest do
 
   describe "from_cookie_string/2 validates options" do
     test "allows valid options" do
-      :ok = parse_opts(max_cookie_size: :infinity)
-      :ok = parse_opts(max_cookie_size: 1_000)
+      assert :ok = parse_opts(max_cookie_size: :infinity)
+      assert :ok = parse_opts(max_cookie_size: 1_000)
     end
 
     test "raises on unknown option" do

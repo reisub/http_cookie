@@ -1,7 +1,7 @@
 defmodule HttpCookie.Parser do
-  alias HttpCookie.{DateParser, URL}
-
   @moduledoc false
+
+  alias HttpCookie.{DateParser, URL}
 
   @spec earliest_expiry_time() :: DateTime.t()
   def earliest_expiry_time, do: ~U[1601-01-01 00:00:00Z]
@@ -138,10 +138,10 @@ defmodule HttpCookie.Parser do
     case DateParser.parse(val) do
       {:ok, dt} ->
         cond do
-          DateTime.compare(dt, latest_expiry_time()) == :gt ->
+          DateTime.after?(dt, latest_expiry_time()) ->
             {"Expires", latest_expiry_time()}
 
-          DateTime.compare(dt, earliest_expiry_time()) == :lt ->
+          DateTime.before?(dt, earliest_expiry_time()) ->
             {"Expires", earliest_expiry_time()}
 
           true ->

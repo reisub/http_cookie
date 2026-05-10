@@ -5,9 +5,9 @@ defmodule HttpCookie.JarTest do
 
   describe "new/1 validates options" do
     test "allows valid options" do
-      %Jar{} = Jar.new(max_cookies: 500, max_cookies_per_domain: 100)
-      %Jar{} = Jar.new(max_cookies: :infinity, max_cookies_per_domain: :infinity)
-      %Jar{} = Jar.new(cookie_opts: [max_cookie_size: 1_000])
+      assert %Jar{} = Jar.new(max_cookies: 500, max_cookies_per_domain: 100)
+      assert %Jar{} = Jar.new(max_cookies: :infinity, max_cookies_per_domain: :infinity)
+      assert %Jar{} = Jar.new(cookie_opts: [max_cookie_size: 1_000])
     end
 
     test "raises on unknown option" do
@@ -302,7 +302,7 @@ defmodule HttpCookie.JarTest do
         |> Map.values()
         |> hd()
 
-      assert DateTime.compare(updated_cookie.last_access_time, ~U[2024-04-01 12:00:00Z]) == :gt
+      assert DateTime.after?(updated_cookie.last_access_time, ~U[2024-04-01 12:00:00Z])
     end
   end
 

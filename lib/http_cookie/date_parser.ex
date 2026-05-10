@@ -35,8 +35,6 @@ defmodule HttpCookie.DateParser do
            :error <- try_parsing_month(token, state),
            :error <- try_parsing_year(token, state) do
         state
-      else
-        state -> state
       end
     end)
   end
@@ -212,16 +210,14 @@ defmodule HttpCookie.DateParser do
   end
 
   defp month__0(rest, _acc, _stack, context, line, offset) do
-    {:error, "expected jan/feb/mar/apr/may/jun/jul/aug/sep/oct/nov/dec", rest, context, line,
-     offset}
+    {:error, "expected jan/feb/mar/apr/may/jun/jul/aug/sep/oct/nov/dec", rest, context, line, offset}
   end
 
   defp month__1(rest, acc, stack, context, line, offset) do
     month__2(rest, [], [acc | stack], context, line, offset)
   end
 
-  defp month__2(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 >= 0 and x0 <= 255 do
+  defp month__2(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 >= 0 and x0 <= 255 do
     month__4(
       rest,
       acc,
@@ -467,8 +463,7 @@ defmodule HttpCookie.DateParser do
     year__4(rest, acc, [2 | stack], context, line, offset)
   end
 
-  defp year__4(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 >= 48 and x0 <= 57 do
+  defp year__4(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 >= 48 and x0 <= 57 do
     year__5(rest, [x0] ++ acc, stack, context, comb__line, comb__offset + 1)
   end
 
@@ -543,8 +538,7 @@ defmodule HttpCookie.DateParser do
     year__11(rest, acc, stack, context, line, offset)
   end
 
-  defp year__13(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 >= 0 and x0 <= 255 do
+  defp year__13(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 >= 0 and x0 <= 255 do
     year__15(
       rest,
       acc,
@@ -614,8 +608,7 @@ defmodule HttpCookie.DateParser do
     time__1(rest, [], [acc | stack], context, line, offset)
   end
 
-  defp time__1(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 >= 48 and x0 <= 57 do
+  defp time__1(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 >= 48 and x0 <= 57 do
     time__2(rest, [x0 - 48] ++ acc, stack, context, comb__line, comb__offset + 1)
   end
 
@@ -627,8 +620,7 @@ defmodule HttpCookie.DateParser do
     time__4(rest, acc, [1 | stack], context, line, offset)
   end
 
-  defp time__4(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 >= 48 and x0 <= 57 do
+  defp time__4(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 >= 48 and x0 <= 57 do
     time__5(rest, [x0] ++ acc, stack, context, comb__line, comb__offset + 1)
   end
 
@@ -664,8 +656,7 @@ defmodule HttpCookie.DateParser do
     )
   end
 
-  defp time__7(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 === 58 do
+  defp time__7(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 === 58 do
     time__8(rest, [] ++ acc, stack, context, comb__line, comb__offset + 1)
   end
 
@@ -677,8 +668,7 @@ defmodule HttpCookie.DateParser do
     time__9(rest, [], [acc | stack], context, line, offset)
   end
 
-  defp time__9(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 >= 48 and x0 <= 57 do
+  defp time__9(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 >= 48 and x0 <= 57 do
     time__10(rest, [x0 - 48] ++ acc, stack, context, comb__line, comb__offset + 1)
   end
 
@@ -690,8 +680,7 @@ defmodule HttpCookie.DateParser do
     time__12(rest, acc, [1 | stack], context, line, offset)
   end
 
-  defp time__12(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 >= 48 and x0 <= 57 do
+  defp time__12(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 >= 48 and x0 <= 57 do
     time__13(rest, [x0] ++ acc, stack, context, comb__line, comb__offset + 1)
   end
 
@@ -727,8 +716,7 @@ defmodule HttpCookie.DateParser do
     )
   end
 
-  defp time__15(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 === 58 do
+  defp time__15(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 === 58 do
     time__16(rest, [] ++ acc, stack, context, comb__line, comb__offset + 1)
   end
 
@@ -740,8 +728,7 @@ defmodule HttpCookie.DateParser do
     time__17(rest, [], [acc | stack], context, line, offset)
   end
 
-  defp time__17(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 >= 48 and x0 <= 57 do
+  defp time__17(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 >= 48 and x0 <= 57 do
     time__18(rest, [x0 - 48] ++ acc, stack, context, comb__line, comb__offset + 1)
   end
 
@@ -753,8 +740,7 @@ defmodule HttpCookie.DateParser do
     time__20(rest, acc, [1 | stack], context, line, offset)
   end
 
-  defp time__20(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 >= 48 and x0 <= 57 do
+  defp time__20(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 >= 48 and x0 <= 57 do
     time__21(rest, [x0] ++ acc, stack, context, comb__line, comb__offset + 1)
   end
 
@@ -829,8 +815,7 @@ defmodule HttpCookie.DateParser do
     time__27(rest, acc, stack, context, line, offset)
   end
 
-  defp time__29(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 >= 0 and x0 <= 255 do
+  defp time__29(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset) when x0 >= 0 and x0 <= 255 do
     time__31(
       rest,
       acc,
@@ -901,8 +886,7 @@ defmodule HttpCookie.DateParser do
   end
 
   defp date_tokens__1(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 === 9 or (x0 >= 32 and x0 <= 47) or (x0 >= 59 and x0 <= 64) or
-              (x0 >= 91 and x0 <= 96) or
+       when x0 === 9 or (x0 >= 32 and x0 <= 47) or (x0 >= 59 and x0 <= 64) or (x0 >= 91 and x0 <= 96) or
               (x0 >= 123 and x0 <= 126) do
     date_tokens__3(rest, acc, stack, context, comb__line, comb__offset + 1)
   end
@@ -929,8 +913,7 @@ defmodule HttpCookie.DateParser do
   end
 
   defp date_tokens__6(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when (x0 >= 0 and x0 <= 8) or (x0 >= 10 and x0 <= 31) or (x0 >= 48 and x0 <= 57) or
-              x0 === 58 or
+       when (x0 >= 0 and x0 <= 8) or (x0 >= 10 and x0 <= 31) or (x0 >= 48 and x0 <= 57) or x0 === 58 or
               (x0 >= 97 and x0 <= 122) or (x0 >= 65 and x0 <= 90) or (x0 >= 127 and x0 <= 255) do
     date_tokens__7(
       rest,
@@ -951,13 +934,12 @@ defmodule HttpCookie.DateParser do
 
   defp date_tokens__6(rest, _acc, _stack, context, line, offset) do
     {:error,
-     "expected byte in the range <<0>> to \"\\b\" or in the range \"\\n\" to <<31>> or in the range \"0\" to \"9\" or in the range \":\" to \":\" or in the range \"a\" to \"z\" or in the range \"A\" to \"Z\" or in the range \"\\d\" to \"ÿ\"",
+     ~s(expected byte in the range <<0>> to "\\b" or in the range "\\n" to <<31>> or in the range "0" to "9" or in the range ":" to ":" or in the range "a" to "z" or in the range "A" to "Z" or in the range "\\d" to "ÿ"),
      rest, context, line, offset}
   end
 
   defp date_tokens__7(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when (x0 >= 0 and x0 <= 8) or (x0 >= 10 and x0 <= 31) or (x0 >= 48 and x0 <= 57) or
-              x0 === 58 or
+       when (x0 >= 0 and x0 <= 8) or (x0 >= 10 and x0 <= 31) or (x0 >= 48 and x0 <= 57) or x0 === 58 or
               (x0 >= 97 and x0 <= 122) or (x0 >= 65 and x0 <= 90) or (x0 >= 127 and x0 <= 255) do
     date_tokens__9(
       rest,
@@ -1025,8 +1007,7 @@ defmodule HttpCookie.DateParser do
   end
 
   defp date_tokens__14(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 === 9 or (x0 >= 32 and x0 <= 47) or (x0 >= 59 and x0 <= 64) or
-              (x0 >= 91 and x0 <= 96) or
+       when x0 === 9 or (x0 >= 32 and x0 <= 47) or (x0 >= 59 and x0 <= 64) or (x0 >= 91 and x0 <= 96) or
               (x0 >= 123 and x0 <= 126) do
     date_tokens__15(rest, acc, stack, context, comb__line, comb__offset + 1)
   end
@@ -1037,8 +1018,7 @@ defmodule HttpCookie.DateParser do
   end
 
   defp date_tokens__15(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 === 9 or (x0 >= 32 and x0 <= 47) or (x0 >= 59 and x0 <= 64) or
-              (x0 >= 91 and x0 <= 96) or
+       when x0 === 9 or (x0 >= 32 and x0 <= 47) or (x0 >= 59 and x0 <= 64) or (x0 >= 91 and x0 <= 96) or
               (x0 >= 123 and x0 <= 126) do
     date_tokens__17(rest, acc, stack, context, comb__line, comb__offset + 1)
   end
@@ -1065,8 +1045,7 @@ defmodule HttpCookie.DateParser do
   end
 
   defp date_tokens__20(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when (x0 >= 0 and x0 <= 8) or (x0 >= 10 and x0 <= 31) or (x0 >= 48 and x0 <= 57) or
-              x0 === 58 or
+       when (x0 >= 0 and x0 <= 8) or (x0 >= 10 and x0 <= 31) or (x0 >= 48 and x0 <= 57) or x0 === 58 or
               (x0 >= 97 and x0 <= 122) or (x0 >= 65 and x0 <= 90) or (x0 >= 127 and x0 <= 255) do
     date_tokens__21(
       rest,
@@ -1091,8 +1070,7 @@ defmodule HttpCookie.DateParser do
   end
 
   defp date_tokens__21(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when (x0 >= 0 and x0 <= 8) or (x0 >= 10 and x0 <= 31) or (x0 >= 48 and x0 <= 57) or
-              x0 === 58 or
+       when (x0 >= 0 and x0 <= 8) or (x0 >= 10 and x0 <= 31) or (x0 >= 48 and x0 <= 57) or x0 === 58 or
               (x0 >= 97 and x0 <= 122) or (x0 >= 65 and x0 <= 90) or (x0 >= 127 and x0 <= 255) do
     date_tokens__23(
       rest,
@@ -1180,8 +1158,7 @@ defmodule HttpCookie.DateParser do
   end
 
   defp date_tokens__27(<<x0, rest::binary>>, acc, stack, context, comb__line, comb__offset)
-       when x0 === 9 or (x0 >= 32 and x0 <= 47) or (x0 >= 59 and x0 <= 64) or
-              (x0 >= 91 and x0 <= 96) or
+       when x0 === 9 or (x0 >= 32 and x0 <= 47) or (x0 >= 59 and x0 <= 64) or (x0 >= 91 and x0 <= 96) or
               (x0 >= 123 and x0 <= 126) do
     date_tokens__29(rest, acc, stack, context, comb__line, comb__offset + 1)
   end

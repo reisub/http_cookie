@@ -1,6 +1,4 @@
 defmodule HttpCookie.Jar.Server do
-  use GenServer
-
   @moduledoc """
   HTTP Cookie Jar Server
 
@@ -8,6 +6,8 @@ defmodule HttpCookie.Jar.Server do
   This is a convenience to enable usage with HTTP clients
   which don't have a way to store and pass back the updated jar.
   """
+
+  use GenServer
 
   alias HttpCookie.Jar
 

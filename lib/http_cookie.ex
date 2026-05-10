@@ -5,9 +5,10 @@ defmodule HttpCookie do
   Implemented according to [RFC6265](https://datatracker.ietf.org/doc/html/rfc6265)
   """
 
-  alias __MODULE__.{Parser, URL}
   import __MODULE__.Parser, only: [latest_expiry_time: 0]
   import __MODULE__.Util, only: [pretty_module: 1]
+
+  alias __MODULE__.{Parser, URL}
 
   @dialyzer {:nowarn_function, matches_url?: 2}
 
@@ -90,7 +91,7 @@ defmodule HttpCookie do
   @spec expired?(cookie :: t()) :: boolean()
   @spec expired?(cookie :: t(), now :: DateTime.t()) :: boolean()
   def expired?(cookie, now \\ DateTime.utc_now()) do
-    DateTime.compare(now, cookie.expiry_time) == :gt
+    DateTime.after?(now, cookie.expiry_time)
   end
 
   # 5.4.  The Cookie Header
