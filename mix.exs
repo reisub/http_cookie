@@ -8,7 +8,7 @@ defmodule HttpCookie.MixProject do
     [
       app: :http_cookie,
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       description: description(),
@@ -50,13 +50,16 @@ defmodule HttpCookie.MixProject do
       {:idna, "~> 6.1"},
       {:public_sufx, "~> 0.6.0"},
       {:nimble_parsec, "~> 1.0", only: [:dev, :test]},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.22.0", only: [:dev, :test]},
       {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
+      {:jump_credo_checks, "~> 0.2", only: [:dev], runtime: false},
+      {:quokka, "~> 2.12", only: [:dev, :test], runtime: false},
       {:req, "~> 0.5.0", optional: true},
       {:tesla, "~> 1.11", optional: true},
       {:plug, "~> 1.0", only: :test},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:benchee, "~> 1.0", only: [:dev, :test]},
-      {:doctor, "~> 0.22.0", only: [:dev, :test]}
+      {:benchee, "~> 1.0", only: [:dev, :test]}
     ]
   end
 

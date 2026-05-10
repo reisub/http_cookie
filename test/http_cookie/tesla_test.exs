@@ -3,6 +3,7 @@ defmodule HttpCookie.TeslaTest do
 
   alias HttpCookie.Jar
   alias HttpCookie.TestSupport.TeslaPlugAdapter
+  alias Tesla.Middleware.FollowRedirects
 
   setup do
     jar_server = start_supervised!(Jar.Server)
@@ -87,7 +88,7 @@ defmodule HttpCookie.TeslaTest do
     tesla =
       Tesla.client(
         [
-          {Tesla.Middleware.FollowRedirects, max_redirects: 3},
+          {FollowRedirects, max_redirects: 3},
           {HttpCookie.TeslaMiddleware, jar_server: jar_server}
         ],
         {TeslaPlugAdapter, plug: plug}
@@ -135,15 +136,13 @@ defmodule HttpCookie.TeslaTest do
     tesla =
       Tesla.client(
         [
-          {Tesla.Middleware.FollowRedirects, max_redirects: 3},
+          {FollowRedirects, max_redirects: 3},
           {HttpCookie.TeslaMiddleware, jar_server: jar_server}
         ],
         {TeslaPlugAdapter, plug: plug}
       )
 
     assert %{status: 200} =
-             Tesla.get!(tesla, "https://example.com/redirect-me",
-               headers: [{"cookie", "there-can-only-be=one"}]
-             )
+             Tesla.get!(tesla, "https://example.com/redirect-me", headers: [{"cookie", "there-can-only-be=one"}])
   end
 end

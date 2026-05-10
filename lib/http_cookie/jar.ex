@@ -7,9 +7,9 @@ defmodule HttpCookie.Jar do
   Implemented according to [RFC6265](https://datatracker.ietf.org/doc/html/rfc6265)
   """
 
-  alias HttpCookie
-
   import HttpCookie.Util, only: [pretty_module: 1]
+
+  alias HttpCookie
 
   defstruct [:cookies, :opts]
 
@@ -129,8 +129,7 @@ defmodule HttpCookie.Jar do
     else
       header_value =
         cookies
-        |> Enum.map(&HttpCookie.to_header_value/1)
-        |> Enum.join("; ")
+        |> Enum.map_join("; ", &HttpCookie.to_header_value/1)
 
       {:ok, header_value, updated_jar}
     end
@@ -244,7 +243,7 @@ defmodule HttpCookie.Jar do
       rhs_path_size = byte_size(rhs_cookie.path)
 
       if lhs_path_size == rhs_path_size do
-        DateTime.compare(lhs_cookie.creation_time, rhs_cookie.creation_time) == :lt
+        DateTime.before?(lhs_cookie.creation_time, rhs_cookie.creation_time)
       else
         lhs_path_size > rhs_path_size
       end
@@ -371,8 +370,7 @@ defmodule HttpCookie.Jar do
     :ok
   end
 
-  defp validate_opt!(k, cnt)
-       when k in @max_cookie_opt_keys and is_integer(cnt) and cnt > 0 do
+  defp validate_opt!(k, cnt) when k in @max_cookie_opt_keys and is_integer(cnt) and cnt > 0 do
     :ok
   end
 

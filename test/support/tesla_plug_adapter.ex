@@ -1,9 +1,9 @@
 defmodule HttpCookie.TestSupport.TeslaPlugAdapter do
-  @moduledoc """
-
-  """
+  @moduledoc false
 
   @behaviour Tesla.Adapter
+
+  alias Plug.Conn.Status
 
   @impl Tesla.Adapter
   def call(env, opts) do
@@ -22,12 +22,12 @@ defmodule HttpCookie.TestSupport.TeslaPlugAdapter do
     uri = URI.parse(env.url)
 
     uri =
-      if env.query not in [nil, []] do
+      if env.query in [nil, []] do
+        uri
+      else
         query = URI.encode_query(env.query)
         query_uri = URI.parse("?#{query}")
         URI.merge(uri, query_uri)
-      else
-        uri
       end
 
     method =
@@ -56,7 +56,7 @@ defmodule HttpCookie.TestSupport.TeslaPlugAdapter do
   defp conn_to_env(conn, env) do
     %{
       env
-      | status: Plug.Conn.Status.code(conn.status),
+      | status: Status.code(conn.status),
         headers: conn.resp_headers,
         body: conn.resp_body
     }

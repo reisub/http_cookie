@@ -1,6 +1,8 @@
 defmodule HttpCookie.DateParser do
   @moduledoc false
 
+  import NimbleParsec
+
   require Logger
 
   defmodule State do
@@ -34,8 +36,6 @@ defmodule HttpCookie.DateParser do
            :error <- try_parsing_month(token, state),
            :error <- try_parsing_year(token, state) do
         state
-      else
-        state -> state
       end
     end)
   end
@@ -124,8 +124,6 @@ defmodule HttpCookie.DateParser do
   defp check_time(_state), do: {:error, :invalid_time_value}
 
   # parsec:HttpCookie.DateParser
-  import NimbleParsec
-
   defmodule Helpers do
     def any_case_string(string) do
       string
@@ -193,7 +191,7 @@ defmodule HttpCookie.DateParser do
   time_field = integer(min: 1, max: 2)
 
   # https://www.rfc-editor.org/errata/eid4148
-  end_time = optional(non_digit |> concat(repeat(octet)))
+  end_time = non_digit |> concat(repeat(octet)) |> optional()
 
   # hms-time = time-field ":" time-field ":" time-field
   hms_time =

@@ -82,9 +82,6 @@ jobs:
           path: |
             priv/plts
 
-      - name: Check formatting
-        run: mix format --check-formatted
-
       - name: Check warnings
         run: mix compile --warnings-as-errors
 
@@ -98,3 +95,34 @@ jobs:
 
       - name: Check docs
         run: mix doctor
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install Erlang & Elixir
+        uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          version-file: mise.toml
+          version-type: strict
+
+      - name: Cache mix dependencies
+        uses: actions/cache@6f8efc29b200d32929f49075959781ed54ec270c # v3.5.0
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-lint-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-lint-
+
+      - name: Install mix dependencies
+        run: mix deps.get
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Run Credo
+        run: mix credo --strict

@@ -68,8 +68,7 @@ defmodule HttpCookie.PerformanceTest do
             "minimal" => "lang=en",
             "expired" => "lang=en; max-age=0",
             "supercookie" => "lang=en; Domain=co.uk",
-            "big" =>
-              "lang=en; Expires=Sun, 06 Nov 2034 08:49:37 GMT; Domain=example.com ; Path=/; Secure; HttpOnly"
+            "big" => "lang=en; Expires=Sun, 06 Nov 2034 08:49:37 GMT; Domain=example.com ; Path=/; Secure; HttpOnly"
           },
           print: [benchmarking: false, fast_warning: false, configuration: false],
           time: 0,

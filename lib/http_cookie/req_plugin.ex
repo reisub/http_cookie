@@ -54,8 +54,7 @@ if Code.ensure_loaded?(Req) do
 
     defp add_cookies(request), do: request
 
-    defp update_cookies({%{options: %{cookie_jar: cookie_jar}} = request, response})
-         when cookie_jar != nil do
+    defp update_cookies({%{options: %{cookie_jar: cookie_jar}} = request, response}) when cookie_jar != nil do
       # req doesn't run request steps after a redirect again, but we need that to include any cookies
       # that might have been returned in the redirect response for the next request
       #
