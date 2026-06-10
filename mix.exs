@@ -51,6 +51,7 @@ defmodule HttpCookie.MixProject do
       {:public_sufx, "~> 0.7"},
       {:nimble_parsec, "~> 1.0", only: [:dev, :test]},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
       {:doctor, "~> 0.22.0", only: [:dev, :test]},
       {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:jump_credo_checks, "~> 0.2", only: [:dev], runtime: false},
