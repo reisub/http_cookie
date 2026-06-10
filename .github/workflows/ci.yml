@@ -22,7 +22,7 @@ jobs:
         include:
           - pair:
               elixir: "1.15.0"
-              otp: "24.3.4.10"
+              otp: "25.3.2.21"
               benchmark: false
           - pair:
               elixir: "1.20.1"
