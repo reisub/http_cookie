@@ -56,7 +56,7 @@ defmodule HttpCookie.MixProject do
       {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:jump_credo_checks, "~> 0.2", only: [:dev], runtime: false},
       {:quokka, "~> 2.12", only: [:dev, :test], runtime: false},
-      {:req, "~> 0.5.0", optional: true},
+      {:req, "~> 0.6.1", optional: true},
       {:tesla, "~> 1.11", optional: true},
       {:plug, "~> 1.0", only: :test},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
