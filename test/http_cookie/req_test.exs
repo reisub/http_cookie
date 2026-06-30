@@ -95,6 +95,44 @@ defmodule HttpCookie.ReqTest do
     assert %{private: %{cookie_jar: _updated_jar}} = Req.get!(req, url: "/redirect-me")
   end
 
+  test "re-applies cookies from the jar on retry" do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+    plug = fn %{request_path: "/retry"} = conn ->
+      attempt = Agent.get_and_update(counter, fn n -> {n, n + 1} end)
+      conn = Plug.Conn.fetch_cookies(conn)
+
+      case attempt do
+        0 ->
+          conn
+          |> Plug.Conn.put_resp_header("set-cookie", "gained=two")
+          |> Plug.Conn.resp(500, "try again")
+
+        _ ->
+          assert conn.req_cookies == %{"existing" => "one", "gained" => "two"}
+          Plug.Conn.resp(conn, 200, "you made it")
+      end
+    end
+
+    jar =
+      HttpCookie.Jar.new()
+      |> HttpCookie.Jar.put_cookies_from_headers(
+        URI.parse("https://example.com/"),
+        [{"set-cookie", "existing=one"}]
+      )
+
+    req =
+      Req.new(
+        base_url: "https://example.com",
+        plug: plug,
+        retry_delay: 1,
+        retry_log_level: false
+      )
+      |> ReqPlugin.attach(cookie_jar: jar)
+
+    assert %{status: 200} = Req.get!(req, url: "/retry")
+  end
+
   test "doesn't override existing cookie header" do
     plug =
       fn
