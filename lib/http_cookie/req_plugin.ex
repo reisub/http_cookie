@@ -21,20 +21,7 @@ if Code.ensure_loaded?(Req) do
     end
 
     defp add_cookies(%{options: %{cookie_jar: cookie_jar}} = request) when cookie_jar != nil do
-      {request, original_cookie_header} =
-        if Req.Request.get_private(request, :req_redirect_count, 0) == 0 do
-          original_header =
-            request
-            |> Req.Request.get_header("cookie")
-            |> List.first()
-
-          request =
-            Req.Request.put_private(request, :http_cookie_orig_cookie_header, original_header)
-
-          {request, original_header}
-        else
-          {request, Req.Request.get_private(request, :http_cookie_orig_cookie_header)}
-        end
+      {request, original_cookie_header} = original_cookie_header(request)
 
       case HttpCookie.Jar.get_cookie_header_value(cookie_jar, request.url) do
         {:ok, value, updated_jar} ->
@@ -54,16 +41,29 @@ if Code.ensure_loaded?(Req) do
 
     defp add_cookies(request), do: request
 
-    defp update_cookies({%{options: %{cookie_jar: cookie_jar}} = request, response}) when cookie_jar != nil do
-      # req doesn't run request steps after a redirect again, but we need that to include any cookies
-      # that might have been returned in the redirect response for the next request
-      #
-      # Wojtek suggested this as a workaround until there is a better solution
-      request = %{
-        request
-        | current_request_steps: request.current_request_steps ++ [:add_cookies]
-      }
+    # Capture the user's original "cookie" header exactly once, on the first run of this
+    # step. Req re-runs request steps on every redirect hop and retry attempt, so we stash
+    # the original value in the request's private store and reuse it on later runs. This
+    # ensures we only avoid overriding a header the *user* set, not one we set ourselves.
+    defp original_cookie_header(request) do
+      case Req.Request.get_private(request, :http_cookie_orig_cookie_header, :unset) do
+        :unset ->
+          original_header =
+            request
+            |> Req.Request.get_header("cookie")
+            |> List.first()
 
+          request =
+            Req.Request.put_private(request, :http_cookie_orig_cookie_header, original_header)
+
+          {request, original_header}
+
+        original_header ->
+          {request, original_header}
+      end
+    end
+
+    defp update_cookies({%{options: %{cookie_jar: cookie_jar}} = request, response}) when cookie_jar != nil do
       headers =
         Enum.flat_map(response.headers, fn {name, vals} ->
           Enum.map(vals, &{name, &1})
