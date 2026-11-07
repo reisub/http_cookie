@@ -95,6 +95,37 @@ defmodule HttpCookie.ReqTest do
     assert %{private: %{cookie_jar: _updated_jar}} = Req.get!(req, url: "/redirect-me")
   end
 
+  test "doesn't leak jar cookies to a redirect target they don't match" do
+    plug =
+      fn
+        %{host: "example.com", request_path: "/redirect-me"} = conn ->
+          location = Plug.Conn.fetch_query_params(conn).query_params["to"]
+
+          conn
+          |> Plug.Conn.put_resp_header("location", location)
+          |> Plug.Conn.resp(302, "Go away")
+
+        conn ->
+          assert Plug.Conn.get_req_header(conn, "cookie") == []
+          Plug.Conn.resp(conn, 200, "No cookies here")
+      end
+
+    jar =
+      HttpCookie.Jar.new()
+      |> HttpCookie.Jar.put_cookies_from_headers(
+        URI.parse("https://example.com/"),
+        [{"set-cookie", "session=secret; Secure"}]
+      )
+
+    req =
+      Req.new(base_url: "https://example.com", plug: plug, redirect_log_level: false)
+      |> ReqPlugin.attach(cookie_jar: jar)
+
+    for to <- ["https://other.example/", "http://example.com/plain"] do
+      assert %{status: 200} = Req.get!(req, url: "/redirect-me", params: [to: to])
+    end
+  end
+
   test "re-applies cookies from the jar on retry" do
     {:ok, counter} = Agent.start_link(fn -> 0 end)
 

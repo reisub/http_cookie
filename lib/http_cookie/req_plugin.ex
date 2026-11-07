@@ -35,7 +35,12 @@ if Code.ensure_loaded?(Req) do
           end
 
         {:error, :no_matching_cookies} ->
-          request
+          # drop a header we set on a previous hop (e.g. before a cross-origin redirect)
+          if original_cookie_header do
+            request
+          else
+            Req.Request.delete_header(request, "cookie")
+          end
       end
     end
 
