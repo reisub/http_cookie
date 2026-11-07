@@ -10,8 +10,6 @@ defmodule HttpCookie do
 
   alias __MODULE__.{Parser, URL}
 
-  @dialyzer {:nowarn_function, matches_url?: 2}
-
   @derive {Inspect, except: [:value]}
   @enforce_keys [:name, :value]
   defstruct [

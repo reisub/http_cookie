@@ -20,6 +20,8 @@ defmodule HttpCookie.URL do
   # Returns nil if the host can't be canonicalized (e.g. it contains disallowed code points).
   def canonicalize_domain(domain) when is_binary(domain) and domain != "" do
     domain
+    # :idna's typespecs only accept charlists
+    |> String.to_charlist()
     |> :idna.to_ascii()
     |> to_string()
     |> String.downcase()
