@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   test:
-    name: OTP ${{matrix.pair.otp}} / Elixir ${{matrix.pair.elixir}}
+    name: ${{matrix.name}}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -20,14 +20,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - pair:
-              elixir: "1.15.0"
-              otp: "26.2.5.21"
-              benchmark: false
-          - pair:
-              elixir: "1.20.2"
-              otp: "29.0.4"
-              benchmark: true
+          - name: OTP 26.2.5.21 / Elixir 1.15.0
+            otp: "26.2.5.21"
+            elixir: "1.15.0"
+            benchmark: false
+          - name: OTP / Elixir from mise.toml
+            version-file: mise.toml
+            benchmark: true
     env:
       MIX_ENV: test
     steps:
@@ -36,10 +35,14 @@ jobs:
           persist-credentials: false
 
       - name: Install Erlang & Elixir
+        id: beam
         uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
         with:
-          otp-version: ${{matrix.pair.otp}}
-          elixir-version: ${{matrix.pair.elixir}}
+          # Either explicit versions or a version file, setup-beam ignores the empty ones
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
+          version-file: ${{matrix.version-file}}
+          version-type: strict
 
       - name: Cache mix dependencies
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -47,9 +50,9 @@ jobs:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-${{ matrix.pair.elixir }}-${{ matrix.pair.otp }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ matrix.pair.elixir }}-${{ matrix.pair.otp }}-
+            ${{ runner.os }}-mix-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-
 
       # Cache key based on Erlang/Elixir version and the mix.lock hash
       - name: Restore PLT cache
@@ -57,9 +60,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           key: |
-            plt-${{ runner.os }}-${{ matrix.pair.otp }}-${{ matrix.pair.elixir }}-${{ hashFiles('**/mix.lock') }}
+            plt-${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            plt-${{ runner.os }}-${{ matrix.pair.otp }}-${{ matrix.pair.elixir }}-
+            plt-${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-
           path: |
             priv/plts
 
@@ -82,7 +85,7 @@ jobs:
         if: steps.plt_cache.outputs.cache-hit != 'true'
         with:
           key: |
-            plt-${{ runner.os }}-${{ matrix.pair.otp }}-${{ matrix.pair.elixir }}-${{ hashFiles('**/mix.lock') }}
+            plt-${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('**/mix.lock') }}
           path: |
             priv/plts
 
@@ -91,11 +94,11 @@ jobs:
 
       - name: Run tests
         run: mix test --warnings-as-errors --include slow:true --include benchmark:true
-        if: ${{ matrix.pair.benchmark }}
+        if: ${{ matrix.benchmark }}
 
       - name: Run tests
         run: mix test --warnings-as-errors --include slow:true
-        if: ${{ ! matrix.pair.benchmark }}
+        if: ${{ ! matrix.benchmark }}
 
       - name: Check docs
         run: mix doctor
