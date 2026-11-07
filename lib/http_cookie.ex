@@ -58,6 +58,7 @@ defmodule HttpCookie do
     max_size = Keyword.get(opts, :max_cookie_size, 8_192)
 
     with :ok <- check_size(str, max_size),
+         :ok <- check_ctl(str),
          {name, value, attributes} = Parser.parse_cookie_string(str, request_url),
          attributes = Enum.reverse(attributes),
          {:ok, cookie} <- new_cookie(name, value),
@@ -365,6 +366,12 @@ defmodule HttpCookie do
       {"HttpOnly", _} -> %{cookie | http_only?: true}
       nil -> %{cookie | http_only?: false}
     end
+  end
+
+  # RFC6265bis: if the set-cookie-string contains a %x00-08 / %x0A-1F / %x7F
+  # character (CTL characters excluding HTAB), ignore it entirely.
+  defp check_ctl(str) do
+    if str =~ ~r/[\x00-\x08\x0A-\x1F\x7F]/, do: {:error, :cookie_invalid_characters}, else: :ok
   end
 
   defp check_size(_str, :infinity), do: :ok

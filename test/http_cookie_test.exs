@@ -77,6 +77,15 @@ defmodule HttpCookieTest do
       assert %{name: "__Host-a", host_only?: true} = parse("__Host-a=1; Secure; Path=/")
     end
 
+    test "rejects control characters" do
+      for str <- ["a=b\r\nX-Injected: yes", "a=b\rc", "a=\0", "a\x01=b", "a=b\x7F", "a=b; Path=/\n"] do
+        assert {:error, :cookie_invalid_characters} =
+                 HttpCookie.from_cookie_string(str, URI.parse("https://example.com"))
+      end
+
+      assert %{value: "b\tc"} = parse("a=b\tc")
+    end
+
     test "sets http_only? flag" do
       assert %{http_only?: true} = parse("foo=bar; HttpOnly")
       assert %{http_only?: false} = parse("foo=bar")
