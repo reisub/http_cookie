@@ -67,7 +67,8 @@ defmodule HttpCookie do
          {:ok, cookie} <- check_domain(cookie, request_url),
          cookie = set_path(cookie, attributes, request_url),
          cookie = set_secure_only(cookie, attributes),
-         :ok <- check_secure_origin(cookie, request_url) do
+         :ok <- check_secure_origin(cookie, request_url),
+         :ok <- check_prefix(cookie, attributes, request_url) do
       {:ok, set_http_only(cookie, attributes)}
     end
   end
@@ -338,6 +339,23 @@ defmodule HttpCookie do
     do: {:error, :cookie_secure_from_insecure_origin}
 
   defp check_secure_origin(_cookie, _request_url), do: :ok
+
+  # RFC6265bis: "__Secure-" cookies must be Secure and set from a secure origin,
+  # "__Host-" cookies additionally must have no Domain attribute and Path=/.
+  defp check_prefix(cookie, attributes, request_url) do
+    name = String.downcase(cookie.name)
+    secure? = cookie.secure_only? and request_url.scheme == "https"
+
+    host_ok? =
+      secure? and List.keyfind(attributes, "Domain", 0) == nil and
+        List.keyfind(attributes, "Path", 0) == {"Path", "/"}
+
+    cond do
+      String.starts_with?(name, "__secure-") and not secure? -> {:error, :cookie_invalid_prefix}
+      String.starts_with?(name, "__host-") and not host_ok? -> {:error, :cookie_invalid_prefix}
+      true -> :ok
+    end
+  end
 
   # 9.   If the cookie-attribute-list contains an attribute with an
   #      attribute-name of "HttpOnly", set the cookie's http-only-flag to

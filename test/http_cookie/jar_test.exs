@@ -273,6 +273,21 @@ defmodule HttpCookie.JarTest do
     end
   end
 
+  describe "host-only cookies" do
+    setup :create_jar
+
+    test "aren't replaced by a sibling's domain cookie", ctx do
+      jar =
+        ctx.jar
+        |> Jar.put_cookies_from_headers(URI.parse("https://example.com"), [{"set-cookie", "sid=good"}])
+        |> Jar.put_cookies_from_headers(URI.parse("https://evil.example.com"), [
+          {"set-cookie", "sid=; Domain=example.com; Max-Age=0"}
+        ])
+
+      assert {:ok, "sid=good", _} = Jar.get_cookie_header_value(jar, URI.parse("https://example.com"))
+    end
+  end
+
   describe "get_cookie_header_value/2" do
     setup :create_jar
 

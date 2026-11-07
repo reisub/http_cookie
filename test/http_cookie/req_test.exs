@@ -42,7 +42,7 @@ defmodule HttpCookie.ReqTest do
       updated_jar.cookies
       |> Map.fetch!("example.com")
       |> Map.fetch!(:cookies)
-      |> Map.fetch!({"foo", "/"})
+      |> Map.fetch!({"foo", "/", true})
       |> Map.fetch!(:last_access_time)
 
     assert %{private: %{cookie_jar: updated_jar}} =
@@ -55,7 +55,7 @@ defmodule HttpCookie.ReqTest do
       updated_jar.cookies
       |> Map.fetch!("example.com")
       |> Map.fetch!(:cookies)
-      |> Map.fetch!({"foo", "/"})
+      |> Map.fetch!({"foo", "/", true})
       |> Map.fetch!(:last_access_time)
 
     assert DateTime.after?(updated_access_time, original_access_time)

@@ -61,6 +61,22 @@ defmodule HttpCookieTest do
                HttpCookie.from_cookie_string("foo=bar; Secure", URI.parse("http://example.com"))
     end
 
+    test "enforces __Secure- and __Host- prefixes" do
+      for {str, url} <- [
+            {"__Secure-a=1", "https://example.com"},
+            {"__Secure-a=1; Secure", "http://example.com"},
+            {"__Host-a=1; Path=/", "https://example.com"},
+            {"__host-a=1; Secure", "https://example.com/foo/bar"},
+            {"__Host-a=1; Secure; Path=/foo", "https://example.com"},
+            {"__Host-a=1; Secure; Path=/; Domain=example.com", "https://example.com"}
+          ] do
+        assert {:error, _} = HttpCookie.from_cookie_string(str, URI.parse(url))
+      end
+
+      assert %{name: "__Secure-a"} = parse("__Secure-a=1; Secure")
+      assert %{name: "__Host-a", host_only?: true} = parse("__Host-a=1; Secure; Path=/")
+    end
+
     test "sets http_only? flag" do
       assert %{http_only?: true} = parse("foo=bar; HttpOnly")
       assert %{http_only?: false} = parse("foo=bar")

@@ -368,7 +368,7 @@ defmodule HttpCookie.Jar do
   end
 
   defp cookie_access_path(cookie) do
-    [Access.key(:cookies), cookie.domain, Access.key(:cookies), {cookie.name, cookie.path}]
+    [Access.key(:cookies), cookie.domain, Access.key(:cookies), {cookie.name, cookie.path, cookie.host_only?}]
   end
 
   defp filter_with_count(list, fun) do
