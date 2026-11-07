@@ -17,12 +17,17 @@ defmodule HttpCookie.URL do
   #
   # 3.  Concatenate the resulting labels, separated by a %x2E (".")
   #     character.
-  def canonicalize_domain(domain) do
+  # Returns nil if the host can't be canonicalized (e.g. it contains disallowed code points).
+  def canonicalize_domain(domain) when is_binary(domain) and domain != "" do
     domain
     |> :idna.to_ascii()
     |> to_string()
     |> String.downcase()
+  catch
+    _kind, _reason -> nil
   end
+
+  def canonicalize_domain(_domain), do: nil
 
   def normalize_path(path) when path in [nil, ""], do: "/"
   def normalize_path(path), do: path

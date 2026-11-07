@@ -291,6 +291,16 @@ defmodule HttpCookie.JarTest do
   describe "get_cookie_header_value/2" do
     setup :create_jar
 
+    test "doesn't crash on invalid request hosts", ctx do
+      jar = Jar.put_cookies_from_headers(ctx.jar, ctx.url, [{"set-cookie", "a=b"}])
+
+      for host <- ["exa mple.com", "", "bad\xFF.com", "a\0b.com", nil] do
+        url = %URI{scheme: "https", host: host, path: "/"}
+        assert {:error, :no_matching_cookies} = Jar.get_cookie_header_value(jar, url)
+        assert ^jar = Jar.put_cookies_from_headers(jar, url, [{"set-cookie", "c=d"}])
+      end
+    end
+
     test "when no cookies match", ctx do
       assert Jar.get_cookie_header_value(ctx.jar, ctx.url) == {:error, :no_matching_cookies}
     end
