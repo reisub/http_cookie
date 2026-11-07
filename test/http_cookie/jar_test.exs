@@ -256,6 +256,21 @@ defmodule HttpCookie.JarTest do
 
       assert_cookie_count(jar, 2)
     end
+
+    test "insecure origin can't overwrite a Secure cookie", ctx do
+      jar =
+        ctx.jar
+        |> Jar.put_cookies_from_headers(URI.parse("https://example.com"), [
+          {"set-cookie", "sid=good; Secure"}
+        ])
+        |> Jar.put_cookies_from_headers(URI.parse("http://example.com"), [
+          {"set-cookie", "sid=evil"},
+          {"set-cookie", "other=ok"}
+        ])
+
+      assert {:ok, "sid=good; other=ok", _} =
+               Jar.get_cookie_header_value(jar, URI.parse("https://example.com"))
+    end
   end
 
   describe "get_cookie_header_value/2" do

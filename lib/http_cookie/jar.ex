@@ -10,6 +10,7 @@ defmodule HttpCookie.Jar do
   import HttpCookie.Util, only: [pretty_module: 1]
 
   alias HttpCookie
+  alias HttpCookie.URL
 
   defstruct [:cookies, :opts]
 
@@ -53,6 +54,9 @@ defmodule HttpCookie.Jar do
   @doc """
   Processes the response header list for the given request URL.
   Parses set-cookie/set-cookie2 headers and stores valid cookies.
+
+  If the request URL isn't secure (https), cookies that would overwrite an existing
+  `Secure` cookie with the same name and a matching domain and path are ignored.
   """
   @spec put_cookies_from_headers(jar :: t(), request_url :: URI.t(), headers :: list()) :: t()
   def put_cookies_from_headers(jar, request_url, headers) do
@@ -67,12 +71,18 @@ defmodule HttpCookie.Jar do
           _ -> []
         end
       end)
+      |> Enum.reject(&(request_url.scheme != "https" and overlays_secure_cookie?(jar, &1)))
 
     put_cookies(jar, cookies)
   end
 
   @doc """
   Stores the provided cookies in the jar.
+
+  Unlike `put_cookies_from_headers/3`, this doesn't know which URL the cookies came
+  from, so it can't prevent cookies received over an insecure connection from
+  overwriting existing `Secure` cookies. Prefer `put_cookies_from_headers/3` for
+  cookies received in responses.
   """
   @spec put_cookies(jar :: %__MODULE__{}, cookies :: list(HttpCookie.t())) :: %__MODULE__{}
   def put_cookies(jar, cookies) do
@@ -85,6 +95,8 @@ defmodule HttpCookie.Jar do
 
   @doc """
   Stores the provided cookie in the jar.
+
+  See `put_cookies/2` for a caveat about `Secure` cookies.
   """
   @spec put_cookie(jar :: %__MODULE__{}, cookie :: HttpCookie.t()) :: %__MODULE__{}
   @spec put_cookie(jar :: %__MODULE__{}, cookie :: HttpCookie.t(), opts :: list()) ::
@@ -329,6 +341,19 @@ defmodule HttpCookie.Jar do
       else
         cookies
       end
+    end)
+  end
+
+  # RFC6265bis: a non-secure origin can't set a cookie that would overlay
+  # an existing Secure cookie with the same name and a matching domain/path.
+  defp overlays_secure_cookie?(jar, cookie) do
+    jar
+    |> all_cookies()
+    |> Enum.any?(fn existing ->
+      existing.secure_only? and existing.name == cookie.name and
+        (URL.domain_match?(existing.domain, cookie.domain) or
+           URL.domain_match?(cookie.domain, existing.domain)) and
+        URL.path_match?(cookie.path, existing.path)
     end)
   end
 

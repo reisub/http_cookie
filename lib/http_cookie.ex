@@ -64,14 +64,11 @@ defmodule HttpCookie do
          cookie = set_expiry_time(cookie, attributes),
          cookie = set_domain(cookie, attributes),
          {:ok, cookie} <- check_public_suffix(cookie, request_url),
-         {:ok, cookie} <- check_domain(cookie, request_url) do
-      cookie =
-        cookie
-        |> set_path(attributes, request_url)
-        |> set_secure_only(attributes)
-        |> set_http_only(attributes)
-
-      {:ok, cookie}
+         {:ok, cookie} <- check_domain(cookie, request_url),
+         cookie = set_path(cookie, attributes, request_url),
+         cookie = set_secure_only(cookie, attributes),
+         :ok <- check_secure_origin(cookie, request_url) do
+      {:ok, set_http_only(cookie, attributes)}
     end
   end
 
@@ -334,6 +331,13 @@ defmodule HttpCookie do
       nil -> %{cookie | secure_only?: false}
     end
   end
+
+  # RFC6265bis: if the secure-only-flag is true and the request-uri's scheme
+  # does not denote a secure protocol, ignore the cookie entirely.
+  defp check_secure_origin(%{secure_only?: true}, %URI{scheme: scheme}) when scheme != "https",
+    do: {:error, :cookie_secure_from_insecure_origin}
+
+  defp check_secure_origin(_cookie, _request_url), do: :ok
 
   # 9.   If the cookie-attribute-list contains an attribute with an
   #      attribute-name of "HttpOnly", set the cookie's http-only-flag to

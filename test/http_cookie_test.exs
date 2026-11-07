@@ -56,6 +56,11 @@ defmodule HttpCookieTest do
       assert %{secure_only?: false} = parse("foo=bar")
     end
 
+    test "rejects Secure cookies from insecure origins" do
+      assert {:error, :cookie_secure_from_insecure_origin} =
+               HttpCookie.from_cookie_string("foo=bar; Secure", URI.parse("http://example.com"))
+    end
+
     test "sets http_only? flag" do
       assert %{http_only?: true} = parse("foo=bar; HttpOnly")
       assert %{http_only?: false} = parse("foo=bar")
