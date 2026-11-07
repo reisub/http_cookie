@@ -364,6 +364,16 @@ defmodule HttpCookie.JarTest do
                 }
               ], _} = Jar.get_matching_cookies(jar, ctx.url)
     end
+
+    test "removes domains left without cookies", ctx do
+      jar =
+        Enum.reduce(1..10, ctx.jar, fn i, jar ->
+          url = URI.parse("https://sub#{i}.example.com")
+          Jar.put_cookies_from_headers(jar, url, [{"set-cookie", "dead=x; Max-Age=0"}])
+        end)
+
+      assert jar.cookies == %{}
+    end
   end
 
   describe "clear_session_cookies/1" do

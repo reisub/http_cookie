@@ -195,6 +195,7 @@ defmodule HttpCookie.Jar do
 
         {domain, %{count: kept, cookies: Map.new(result)}}
       end)
+      |> Map.reject(fn {_domain, %{count: count}} -> count == 0 end)
 
     %{jar | cookies: updated_cookies}
   end
@@ -216,6 +217,7 @@ defmodule HttpCookie.Jar do
 
         {domain, %{count: kept, cookies: Map.new(result)}}
       end)
+      |> Map.reject(fn {_domain, %{count: count}} -> count == 0 end)
 
     %{jar | cookies: updated_cookies}
   end
