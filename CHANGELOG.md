@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- dropped support for OTP 25, OTP 26 is now the minimum (required by `public_sufx` 0.8)
 - host-only cookies are stored under the canonicalized request host, so cookies from hosts like `EXAMPLE.com` or `bücher.de` are now sent back
 - the jar's internal storage key now includes the host-only flag, so jars persisted with an older version (e.g. with `:erlang.term_to_binary/1`) should be rebuilt
 
