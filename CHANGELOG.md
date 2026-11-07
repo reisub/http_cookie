@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-11-08
+
+### Security
+
+- `HttpCookie.ReqPlugin` no longer forwards the jar's `cookie` header to redirect targets or retries that the cookies don't match
+- reject `Secure` cookies set from insecure origins, and don't let insecure origins overwrite existing `Secure` cookies (enforced by `HttpCookie.Jar.put_cookies_from_headers/3`, see the `HttpCookie.Jar.put_cookies/2` docs)
+- enforce the `__Secure-` and `__Host-` cookie name prefixes
+- domain cookies no longer replace host-only cookies with the same name and path
+- reject `Set-Cookie` headers containing control characters
+- invalid request hosts no longer crash the caller or `HttpCookie.Jar.Server`
+- remove domain entries left without cookies, so expired cookies can't grow the jar without bound
+- require `public_sufx` 0.8.20261106, which recognizes public suffixes with a trailing dot and matches in linear time
+
+### Changed
+
+- host-only cookies are stored under the canonicalized request host, so cookies from hosts like `EXAMPLE.com` or `bücher.de` are now sent back
+- the jar's internal storage key now includes the host-only flag, so jars persisted with an older version (e.g. with `:erlang.term_to_binary/1`) should be rebuilt
+
 ## [0.11.0] - 2026-07-28
 
 ### Changed

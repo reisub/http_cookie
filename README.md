@@ -14,7 +14,7 @@ The package can be installed by adding `http_cookie` to your list of dependencie
 ```elixir
 def deps do
   [
-    {:http_cookie, "~> 0.11.0"}
+    {:http_cookie, "~> 0.12.0"}
   ]
 end
 ```
