@@ -130,6 +130,10 @@ defmodule HttpCookie.URL do
     PublicSufx.public_suffix?(domain)
   end
 
+  # The RFC leaves the notion of a "secure" protocol to the user agent;
+  # like most user agents, we consider https to be secure.
+  def secure?(%URI{scheme: scheme}), do: scheme == "https"
+
   def ip_address?(str) do
     charlist = String.to_charlist(str)
 

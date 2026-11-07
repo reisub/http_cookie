@@ -139,7 +139,7 @@ defmodule HttpCookie do
     request_domain != nil and
       matches_domain?(cookie, request_domain) and
       URL.path_match?(request_path, cookie.path) and
-      (!cookie.secure_only? or request_url.scheme == "https")
+      (!cookie.secure_only? or URL.secure?(request_url))
   end
 
   @doc """
@@ -335,16 +335,17 @@ defmodule HttpCookie do
 
   # RFC6265bis: if the secure-only-flag is true and the request-uri's scheme
   # does not denote a secure protocol, ignore the cookie entirely.
-  defp check_secure_origin(%{secure_only?: true}, %URI{scheme: scheme}) when scheme != "https",
-    do: {:error, :cookie_secure_from_insecure_origin}
-
-  defp check_secure_origin(_cookie, _request_url), do: :ok
+  defp check_secure_origin(cookie, request_url) do
+    if cookie.secure_only? and not URL.secure?(request_url),
+      do: {:error, :cookie_secure_from_insecure_origin},
+      else: :ok
+  end
 
   # RFC6265bis: "__Secure-" cookies must be Secure and set from a secure origin,
   # "__Host-" cookies additionally must have no Domain attribute and Path=/.
   defp check_prefix(cookie, attributes, request_url) do
     name = String.downcase(cookie.name)
-    secure? = cookie.secure_only? and request_url.scheme == "https"
+    secure? = cookie.secure_only? and URL.secure?(request_url)
 
     host_ok? =
       secure? and List.keyfind(attributes, "Domain", 0) == nil and

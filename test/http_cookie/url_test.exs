@@ -56,6 +56,12 @@ defmodule HttpCookie.URLTest do
     refute domain_match?("com", "example.org")
   end
 
+  test "secure?/1" do
+    assert secure?(URI.parse("https://example.org"))
+    refute secure?(URI.parse("http://example.org"))
+    refute secure?(URI.parse("ws://example.org"))
+  end
+
   test "ip_address?/1" do
     assert ip_address?("0.0.0.0")
     assert ip_address?("1.2.3.4")

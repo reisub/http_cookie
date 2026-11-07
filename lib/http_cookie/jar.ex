@@ -71,7 +71,7 @@ defmodule HttpCookie.Jar do
           _ -> []
         end
       end)
-      |> Enum.reject(&(request_url.scheme != "https" and overlays_secure_cookie?(jar, &1)))
+      |> Enum.reject(&(not URL.secure?(request_url) and overlays_secure_cookie?(jar, &1)))
 
     put_cookies(jar, cookies)
   end
