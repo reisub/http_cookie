@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - reject `Set-Cookie` headers containing control characters
 - invalid request hosts no longer crash the caller or `HttpCookie.Jar.Server`
 - remove domain entries left without cookies, so expired cookies can't grow the jar without bound
-- require `public_sufx` 0.8.20261106, which recognizes public suffixes with a trailing dot and matches in linear time
+- require `public_sufx` 0.8, which recognizes public suffixes with a trailing dot and matches in linear time
 
 ### Changed
 
