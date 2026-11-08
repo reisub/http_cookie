@@ -38,7 +38,7 @@ jobs:
     if: ${{ needs.check.outputs.publish == 'true' }}
     runs-on: ubuntu-latest
     # Waits for approval if hex.pm stages the release (staged releases expire after 7 days).
-    # If this times out, approve the release on hex.pm and re-run the workflow to tag it.
+    # If this times out, approve the release on hex.pm and re-run the workflow to tag and release it.
     timeout-minutes: 120
     environment: publish
     permissions:
@@ -68,17 +68,26 @@ jobs:
           BROWSER: "true"
 
   tag:
-    name: Tag release
+    name: Tag and create GitHub release
     needs: [check, publish]
     # Also runs when the version is already published but not tagged yet, never after
     # a failed, rejected, expired or timed-out publish.
     if: ${{ !cancelled() && needs.check.outputs.tag == 'true' && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write # create the release tag
+      contents: write # create the release and its tag
     steps:
-      - name: Create tag
-        run: gh api "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/v$VERSION" -f "sha=$GITHUB_SHA"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The tag doesn't exist yet, so creating the release creates it on this commit in
+      # the same API call: a failed release leaves no tag behind and a re-run retries both.
+      - name: Create release
+        run: |
+          .github/workflows/release_notes.sh "$VERSION" >"$RUNNER_TEMP/notes.md"
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file "$RUNNER_TEMP/notes.md"
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           VERSION: ${{ needs.check.outputs.version }}

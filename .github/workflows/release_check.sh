@@ -15,6 +15,8 @@ if [[ -n $tags ]]; then
   tag=false
 else
   tag=true
+  # The release notes come from the changelog, check them before publishing
+  .github/workflows/release_notes.sh "$version" >/dev/null
 fi
 
 status=$(curl --silent --show-error --proto '=https' --retry 3 --output /dev/null \
