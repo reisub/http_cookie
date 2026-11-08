@@ -49,11 +49,13 @@ defmodule HttpCookie.MixProject do
     [
       {:idna, "~> 7.1"},
       {:public_sufx, "~> 0.8"},
-      {:nimble_parsec, "~> 1.0", only: [:dev, :test]},
+      # ex_doc needs it in the docs environment too
+      {:nimble_parsec, "~> 1.0", only: [:dev, :test, :docs]},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
       {:doctor, "~> 0.23.0", only: [:dev, :test]},
-      {:ex_doc, ">= 0.0.0", only: [:dev, :test], runtime: false},
+      # The publish workflow uses the docs environment to compile only what it needs
+      {:ex_doc, ">= 0.0.0", only: [:dev, :test, :docs], runtime: false},
       {:jump_credo_checks, "~> 0.2", only: [:dev], runtime: false},
       {:quokka, "~> 2.12", only: [:dev, :test], runtime: false},
       {:req, "~> 0.7.1", optional: true},

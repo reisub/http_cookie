@@ -1,0 +1,84 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check release
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip publish]') && !contains(github.event.head_commit.message, '[publish skip]') }}
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      tag: ${{ steps.check.outputs.tag }}
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check whether the version is tagged and published
+        id: check
+        run: .github/workflows/release_check.sh
+
+  publish:
+    name: Publish to Hex
+    needs: check
+    if: ${{ needs.check.outputs.publish == 'true' }}
+    runs-on: ubuntu-latest
+    # Waits for approval if hex.pm stages the release (staged releases expire after 7 days).
+    # If this times out, approve the release on hex.pm and re-run the workflow to tag it.
+    timeout-minutes: 120
+    environment: publish
+    permissions:
+      contents: read
+      id-token: write # Hex workload identity (trusted publishing)
+    env:
+      # Only ex_doc and runtime dependencies are part of the docs environment,
+      # which keeps third-party code in this job to a minimum.
+      MIX_ENV: docs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install OTP and Elixir
+        uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        with:
+          version-file: mise.toml
+          version-type: strict
+
+      - name: Publish
+        run: |
+          mix deps.get --only docs
+          mix hex.publish --yes --wait
+        env:
+          # --wait tries to open the approval URL in a browser; don't launch anything
+          BROWSER: "true"
+
+  tag:
+    name: Tag release
+    needs: [check, publish]
+    # Also runs when the version is already published but not tagged yet, never after
+    # a failed, rejected, expired or timed-out publish.
+    if: ${{ !cancelled() && needs.check.outputs.tag == 'true' && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release tag
+    steps:
+      - name: Create tag
+        run: gh api "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/v$VERSION" -f "sha=$GITHUB_SHA"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}

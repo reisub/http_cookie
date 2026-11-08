@@ -138,3 +138,11 @@ jobs:
 
       - name: Run Credo
         run: mix credo --strict
+
+      - name: Check version script matches mix.exs
+        run: |
+          # mix run may print compiler output first, the version is the last line
+          expected=$(mix run --no-start -e 'IO.puts(Mix.Project.config()[:version])' | tail -n 1)
+          actual=$(.github/workflows/version.sh)
+          echo "mix.exs: $expected, version.sh: $actual"
+          test "$expected" = "$actual"
