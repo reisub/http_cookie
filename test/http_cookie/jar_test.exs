@@ -410,6 +410,11 @@ defmodule HttpCookie.JarTest do
   # based on:
   # https://github.com/abarth/http-state/tree/master/tests/data/parser
   # `ietf-test-cases.json` was generated using `test_data_to_json.py`
+  #
+  # CHROMIUM0022 and CHROMIUM0023 are disabled upstream, where they expect Chromium's old
+  # behavior of truncating the cookie at a NUL or CR. They're enabled here with RFC6265bis's
+  # expectation instead: a set-cookie-string containing control characters (other than
+  # HTAB) is ignored entirely.
   describe "IETF" do
     test_cases =
       __ENV__.file
