@@ -3,6 +3,11 @@ defmodule HttpCookie.PerformanceTest do
 
   import ExUnit.CaptureIO
 
+  # Budgets leave about 10% of headroom over the measured maximum reductions, so
+  # a big performance regression fails the test. They were measured with the
+  # Elixir/OTP in mise.toml (the CI job that runs benchmarks) and may need new
+  # values when those change; a failure lists every measured value.
+
   setup_all do
     url = URI.parse("https://example.com")
 
@@ -45,10 +50,12 @@ defmodule HttpCookie.PerformanceTest do
       end)
 
     [
-      empty_jar: empty_jar,
-      small_jar: small_jar,
-      big_jar: big_jar,
-      full_jar: full_jar
+      jars: %{
+        "empty_jar" => empty_jar,
+        "small_jar" => small_jar,
+        "big_jar" => big_jar,
+        "full_jar" => full_jar
+      }
     ]
   end
 
@@ -56,99 +63,108 @@ defmodule HttpCookie.PerformanceTest do
   test "HttpCookie.from_cookie_string/2 isn't slow" do
     url = URI.parse("https://sub.example.com")
 
-    capture_io(fn ->
-      result =
-        Benchee.run(
-          %{
-            "HttpCookie.from_cookie_string/2" => fn input ->
-              HttpCookie.from_cookie_string(input, url)
-            end
-          },
-          inputs: %{
-            "minimal" => "lang=en",
-            "expired" => "lang=en; max-age=0",
-            "supercookie" => "lang=en; Domain=co.uk",
-            "big" => "lang=en; Expires=Sun, 06 Nov 2034 08:49:37 GMT; Domain=example.com ; Path=/; Secure; HttpOnly"
-          },
-          print: [benchmarking: false, fast_warning: false, configuration: false],
-          time: 0,
-          reduction_time: 1
-        )
+    assert_reductions(
+      &HttpCookie.from_cookie_string(&1, url),
+      %{
+        "minimal" => "lang=en",
+        "expired" => "lang=en; max-age=0",
+        "supercookie" => "lang=en; Domain=co.uk",
+        "big" => "lang=en; Expires=Sun, 06 Nov 2034 08:49:37 GMT; Domain=example.com ; Path=/; Secure; HttpOnly",
+        # the longest Domain attribute within the default max_cookie_size,
+        # public suffix matching used to take quadratic time on it
+        "long_domain" => "a=b; Domain=" <> String.duplicate("a.", 4_000) <> "com"
+      },
+      %{
+        "minimal" => 410,
+        "expired" => 655,
+        "supercookie" => 782,
+        "big" => 2_480,
+        "long_domain" => 41_100
+      }
+    )
 
-      assert max_reductions(result, "minimal") < 4_000
-      assert max_reductions(result, "expired") < 4_000
-      assert max_reductions(result, "supercookie") < 4_000
-      assert max_reductions(result, "big") < 4_000
-    end)
+    # non-ASCII hosts go through IDNA, ASCII hosts skip it
+    idn_url = URI.parse("https://bücher.de")
+
+    assert_reductions(
+      &HttpCookie.from_cookie_string(&1, idn_url),
+      %{"idn_host" => "lang=en"},
+      %{"idn_host" => 1_050}
+    )
   end
 
   @tag :benchmark
-  test "HttpCookie.Jar.put_cookies_from_headers/2 isn't slow", ctx do
+  test "HttpCookie.Jar.put_cookies_from_headers/3 isn't slow", ctx do
     url = URI.parse("https://another.example.com")
 
-    capture_io(fn ->
-      result =
-        Benchee.run(
-          %{
-            "HttpCookie.Jar.put_cookies_from_headers/2" => fn input ->
-              HttpCookie.Jar.put_cookies_from_headers(input, url, [{"set-cookie", "foo=bar"}])
-            end
-          },
-          inputs: %{
-            "empty_jar" => ctx.empty_jar,
-            "small_jar" => ctx.small_jar,
-            "big_jar" => ctx.big_jar,
-            "full_jar" => ctx.full_jar
-          },
-          print: [benchmarking: false, fast_warning: false, configuration: false],
-          time: 0,
-          reduction_time: 1
-        )
+    assert_reductions(
+      &HttpCookie.Jar.put_cookies_from_headers(&1, url, [{"set-cookie", "foo=bar"}]),
+      ctx.jars,
+      %{
+        "empty_jar" => 842,
+        "small_jar" => 1_100,
+        "big_jar" => 13_200,
+        "full_jar" => 3_110_000
+      }
+    )
 
-      assert max_reductions(result, "empty_jar") < 2_000
-      assert max_reductions(result, "small_jar") < 2_500
-      assert max_reductions(result, "big_jar") < 20_000
-      assert max_reductions(result, "full_jar") < 4_500_000
-    end)
+    # insecure responses also check that no Secure cookie gets overwritten
+    http_url = URI.parse("http://another.example.com")
+
+    assert_reductions(
+      &HttpCookie.Jar.put_cookies_from_headers(&1, http_url, [{"set-cookie", "foo=bar"}]),
+      Map.take(ctx.jars, ["full_jar"]),
+      %{"full_jar" => 3_150_000}
+    )
   end
 
   @tag :benchmark
   test "HttpCookie.Jar.get_cookie_header_value/2 isn't slow", ctx do
     url = URI.parse("https://example.com")
 
-    capture_io(fn ->
-      result =
-        Benchee.run(
-          %{
-            "HttpCookie.Jar.get_cookie_header_value/2" => fn input ->
-              HttpCookie.Jar.get_cookie_header_value(input, url)
-            end
-          },
-          inputs: %{
-            "empty_jar" => ctx.empty_jar,
-            "small_jar" => ctx.small_jar,
-            "big_jar" => ctx.big_jar,
-            "full_jar" => ctx.full_jar
-          },
+    assert_reductions(
+      &HttpCookie.Jar.get_cookie_header_value(&1, url),
+      ctx.jars,
+      %{
+        # an empty jar returns right away, 10% of headroom isn't a whole reduction
+        "empty_jar" => 7,
+        "small_jar" => 652,
+        "big_jar" => 43_300,
+        "full_jar" => 291_000
+      }
+    )
+
+    # a request no cookie matches still checks every cookie
+    other_url = URI.parse("https://other.org")
+
+    assert_reductions(
+      &HttpCookie.Jar.get_cookie_header_value(&1, other_url),
+      Map.take(ctx.jars, ["full_jar"]),
+      %{"full_jar" => 261_000}
+    )
+  end
+
+  defp assert_reductions(fun, inputs, budgets) do
+    assert Enum.sort(Map.keys(inputs)) == Enum.sort(Map.keys(budgets))
+
+    {result, _output} =
+      with_io(fn ->
+        Benchee.run(%{"benchmark" => fun},
+          inputs: inputs,
           print: [benchmarking: false, fast_warning: false, configuration: false],
           time: 0,
           reduction_time: 1
         )
+      end)
 
-      assert max_reductions(result, "empty_jar") < 200
-      assert max_reductions(result, "small_jar") < 2_500
-      assert max_reductions(result, "big_jar") < 200_000
-      assert max_reductions(result, "full_jar") < 3_250_000
-    end)
-  end
+    measured =
+      Map.new(result.scenarios, fn scenario ->
+        {scenario.input_name, scenario.reductions_data.statistics.maximum}
+      end)
 
-  defp max_reductions(benchee_result, input_name) do
-    benchee_result.scenarios
-    |> Enum.find(&(&1.input_name == input_name))
-    |> get_in([
-      Access.key(:reductions_data),
-      Access.key(:statistics),
-      Access.key(:maximum)
-    ])
+    over_budget = for {input, budget} <- budgets, measured[input] > budget, do: input
+
+    assert over_budget == [],
+           "over budget: #{inspect(over_budget)}\nmeasured: #{inspect(measured)}\nbudgets:  #{inspect(budgets)}"
   end
 end
