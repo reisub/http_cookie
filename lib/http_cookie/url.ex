@@ -25,11 +25,12 @@ defmodule HttpCookie.URL do
       String.downcase(domain)
     else
       domain
+      # IDNA2008 rejects upper-case code points, so lower-case first
+      |> String.downcase()
       # :idna's typespecs only accept charlists
       |> String.to_charlist()
       |> :idna.to_ascii()
       |> to_string()
-      |> String.downcase()
     end
   catch
     _kind, _reason -> nil

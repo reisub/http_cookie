@@ -363,7 +363,7 @@ defmodule HttpCookie do
   # "__Host-" cookies additionally must have no Domain attribute and Path=/.
   # check_secure_origin/2 runs first and already rejects Secure cookies from
   # insecure origins, so the Secure flag is all that's left to check here.
-  defp check_prefix(%{secure_only?: secure?} = cookie, attributes) do
+  defp check_prefix(%{name: "__" <> _, secure_only?: secure?} = cookie, attributes) do
     name = String.downcase(cookie.name)
 
     host_ok? =
@@ -376,6 +376,9 @@ defmodule HttpCookie do
       true -> :ok
     end
   end
+
+  # Prefixes start with "__", so other names need no checks
+  defp check_prefix(_cookie, _attributes), do: :ok
 
   # 9.   If the cookie-attribute-list contains an attribute with an
   #      attribute-name of "HttpOnly", set the cookie's http-only-flag to

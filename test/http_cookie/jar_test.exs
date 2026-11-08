@@ -257,6 +257,19 @@ defmodule HttpCookie.JarTest do
       assert_cookie_count(jar, 2)
     end
 
+    test "an expired Secure cookie doesn't stop an insecure origin", ctx do
+      {:ok, expired} =
+        HttpCookie.from_cookie_string("sid=old; Secure; Max-Age=0", URI.parse("https://example.com"))
+
+      jar =
+        ctx.jar
+        # keep it in the jar, like a cookie that expired after the last put
+        |> Jar.put_cookie(expired, clear_expired: false)
+        |> Jar.put_cookies_from_headers(URI.parse("http://example.com"), [{"set-cookie", "sid=new"}])
+
+      assert {:ok, "sid=new", _} = Jar.get_cookie_header_value(jar, URI.parse("http://example.com"))
+    end
+
     test "insecure origin can't overwrite a Secure cookie", ctx do
       jar =
         ctx.jar

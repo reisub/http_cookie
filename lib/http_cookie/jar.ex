@@ -358,7 +358,14 @@ defmodule HttpCookie.Jar do
     if URL.secure?(request_url) do
       cookies
     else
-      secure_cookies = jar |> all_cookies() |> Enum.filter(& &1.secure_only?)
+      # expired cookies are only cleared after a put, so some may still be in the jar
+      now = DateTime.utc_now()
+
+      secure_cookies =
+        jar
+        |> all_cookies()
+        |> Enum.filter(&(&1.secure_only? and not HttpCookie.expired?(&1, now)))
+
       Enum.reject(cookies, fn cookie -> Enum.any?(secure_cookies, &overlays?(cookie, &1)) end)
     end
   end
