@@ -9,12 +9,14 @@
 
 ## Installation
 
+Requires Elixir 1.15 or later and Erlang/OTP 26 or later.
+
 The package can be installed by adding `http_cookie` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:http_cookie, "~> 0.11.0"}
+    {:http_cookie, "~> 0.12.0"}
   ]
 end
 ```

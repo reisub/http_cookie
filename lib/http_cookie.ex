@@ -10,8 +10,6 @@ defmodule HttpCookie do
 
   alias __MODULE__.{Parser, URL}
 
-  @dialyzer {:nowarn_function, matches_url?: 2}
-
   @derive {Inspect, except: [:value]}
   @enforce_keys [:name, :value]
   defstruct [
@@ -58,20 +56,20 @@ defmodule HttpCookie do
     max_size = Keyword.get(opts, :max_cookie_size, 8_192)
 
     with :ok <- check_size(str, max_size),
+         {:ok, request_domain} <- canonicalize_request_host(request_url),
+         :ok <- check_ctl(str),
          {name, value, attributes} = Parser.parse_cookie_string(str, request_url),
          attributes = Enum.reverse(attributes),
          {:ok, cookie} <- new_cookie(name, value),
          cookie = set_expiry_time(cookie, attributes),
          cookie = set_domain(cookie, attributes),
-         {:ok, cookie} <- check_public_suffix(cookie, request_url),
-         {:ok, cookie} <- check_domain(cookie, request_url) do
-      cookie =
-        cookie
-        |> set_path(attributes, request_url)
-        |> set_secure_only(attributes)
-        |> set_http_only(attributes)
-
-      {:ok, cookie}
+         {:ok, cookie} <- check_public_suffix(cookie, request_domain),
+         {:ok, cookie} <- check_domain(cookie, request_domain),
+         cookie = set_path(cookie, attributes, request_url),
+         cookie = set_secure_only(cookie, attributes),
+         :ok <- check_secure_origin(cookie, request_url),
+         :ok <- check_prefix(cookie, attributes) do
+      {:ok, set_http_only(cookie, attributes)}
     end
   end
 
@@ -133,12 +131,33 @@ defmodule HttpCookie do
   """
   @spec matches_url?(cookie :: t(), request_url :: URI.t()) :: boolean()
   def matches_url?(cookie, %URI{} = request_url) do
-    request_domain = URL.canonicalize_domain(request_url.host)
-    request_path = URL.normalize_path(request_url.path)
+    case request_matcher(request_url) do
+      nil -> false
+      matcher -> matches_request?(cookie, matcher)
+    end
+  end
 
+  @typedoc false
+  @type request_matcher :: {domain :: String.t(), path :: String.t(), secure? :: boolean()}
+
+  # Canonicalizes the request URL once, so matching many cookies against it
+  # doesn't redo that work for each cookie. Returns nil if the host can't be
+  # canonicalized, in which case no cookie matches.
+  @doc false
+  @spec request_matcher(request_url :: URI.t()) :: request_matcher() | nil
+  def request_matcher(%URI{} = request_url) do
+    case URL.canonicalize_domain(request_url.host) do
+      nil -> nil
+      domain -> {domain, URL.normalize_path(request_url.path), URL.secure?(request_url)}
+    end
+  end
+
+  @doc false
+  @spec matches_request?(cookie :: t(), request_matcher()) :: boolean()
+  def matches_request?(cookie, {request_domain, request_path, secure?}) do
     matches_domain?(cookie, request_domain) and
       URL.path_match?(request_path, cookie.path) and
-      (!cookie.secure_only? or request_url.scheme == "https")
+      (!cookie.secure_only? or secure?)
   end
 
   @doc """
@@ -263,8 +282,7 @@ defmodule HttpCookie do
   #         Otherwise:
   #
   #            Ignore the cookie entirely and abort these steps.
-  defp check_public_suffix(cookie, request_url) do
-    request_domain = URL.canonicalize_domain(request_url.host)
+  defp check_public_suffix(cookie, request_domain) do
     public_suffix? = URL.public_suffix?(cookie.domain)
 
     cond do
@@ -297,14 +315,12 @@ defmodule HttpCookie do
   #         Set the cookie's host-only-flag to true.
   #
   #         Set the cookie's domain to the canonicalized request-host.
-  defp check_domain(%{domain: ""} = cookie, request_url) do
-    cookie = %{cookie | domain: request_url.host, host_only?: true}
+  defp check_domain(%{domain: ""} = cookie, request_domain) do
+    cookie = %{cookie | domain: request_domain, host_only?: true}
     {:ok, cookie}
   end
 
-  defp check_domain(%{domain: cookie_domain} = cookie, request_url) do
-    request_domain = URL.canonicalize_domain(request_url.host)
-
+  defp check_domain(%{domain: cookie_domain} = cookie, request_domain) do
     if URL.domain_match?(request_domain, cookie_domain) do
       cookie = %{cookie | host_only?: false}
       {:ok, cookie}
@@ -335,6 +351,35 @@ defmodule HttpCookie do
     end
   end
 
+  # RFC6265bis: if the secure-only-flag is true and the request-uri's scheme
+  # does not denote a secure protocol, ignore the cookie entirely.
+  defp check_secure_origin(cookie, request_url) do
+    if cookie.secure_only? and not URL.secure?(request_url),
+      do: {:error, :cookie_secure_from_insecure_origin},
+      else: :ok
+  end
+
+  # RFC6265bis: "__Secure-" cookies must be Secure and set from a secure origin,
+  # "__Host-" cookies additionally must have no Domain attribute and Path=/.
+  # check_secure_origin/2 runs first and already rejects Secure cookies from
+  # insecure origins, so the Secure flag is all that's left to check here.
+  defp check_prefix(%{name: "__" <> _, secure_only?: secure?} = cookie, attributes) do
+    name = String.downcase(cookie.name)
+
+    host_ok? =
+      secure? and List.keyfind(attributes, "Domain", 0) == nil and
+        List.keyfind(attributes, "Path", 0) == {"Path", "/"}
+
+    cond do
+      String.starts_with?(name, "__secure-") and not secure? -> {:error, :cookie_invalid_prefix}
+      String.starts_with?(name, "__host-") and not host_ok? -> {:error, :cookie_invalid_prefix}
+      true -> :ok
+    end
+  end
+
+  # Prefixes start with "__", so other names need no checks
+  defp check_prefix(_cookie, _attributes), do: :ok
+
   # 9.   If the cookie-attribute-list contains an attribute with an
   #      attribute-name of "HttpOnly", set the cookie's http-only-flag to
   #      true.  Otherwise, set the cookie's http-only-flag to false.
@@ -342,6 +387,19 @@ defmodule HttpCookie do
     case List.keyfind(attributes, "HttpOnly", 0) do
       {"HttpOnly", _} -> %{cookie | http_only?: true}
       nil -> %{cookie | http_only?: false}
+    end
+  end
+
+  # RFC6265bis: if the set-cookie-string contains a %x00-08 / %x0A-1F / %x7F
+  # character (CTL characters excluding HTAB), ignore it entirely.
+  defp check_ctl(str) do
+    if str =~ ~r/[\x00-\x08\x0A-\x1F\x7F]/, do: {:error, :cookie_invalid_characters}, else: :ok
+  end
+
+  defp canonicalize_request_host(request_url) do
+    case URL.canonicalize_domain(request_url.host) do
+      nil -> {:error, :cookie_invalid_request_host}
+      request_domain -> {:ok, request_domain}
     end
   end
 

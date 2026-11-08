@@ -256,10 +256,71 @@ defmodule HttpCookie.JarTest do
 
       assert_cookie_count(jar, 2)
     end
+
+    test "an expired Secure cookie doesn't stop an insecure origin", ctx do
+      {:ok, expired} =
+        HttpCookie.from_cookie_string("sid=old; Secure; Max-Age=0", URI.parse("https://example.com"))
+
+      jar =
+        ctx.jar
+        # keep it in the jar, like a cookie that expired after the last put
+        |> Jar.put_cookie(expired, clear_expired: false)
+        |> Jar.put_cookies_from_headers(URI.parse("http://example.com"), [{"set-cookie", "sid=new"}])
+
+      assert {:ok, "sid=new", _} = Jar.get_cookie_header_value(jar, URI.parse("http://example.com"))
+    end
+
+    test "insecure origin can't overwrite a Secure cookie", ctx do
+      jar =
+        ctx.jar
+        |> Jar.put_cookies_from_headers(URI.parse("https://example.com"), [
+          {"set-cookie", "sid=good; Secure"}
+        ])
+        |> Jar.put_cookies_from_headers(URI.parse("http://example.com"), [
+          {"set-cookie", "sid=evil"},
+          {"set-cookie", "other=ok"}
+        ])
+
+      assert {:ok, "sid=good; other=ok", _} =
+               Jar.get_cookie_header_value(jar, URI.parse("https://example.com"))
+    end
+  end
+
+  describe "host-only cookies" do
+    setup :create_jar
+
+    test "aren't replaced by a sibling's domain cookie", ctx do
+      jar =
+        ctx.jar
+        |> Jar.put_cookies_from_headers(URI.parse("https://example.com"), [{"set-cookie", "sid=good"}])
+        |> Jar.put_cookies_from_headers(URI.parse("https://evil.example.com"), [
+          {"set-cookie", "sid=; Domain=example.com; Max-Age=0"}
+        ])
+
+      assert {:ok, "sid=good", _} = Jar.get_cookie_header_value(jar, URI.parse("https://example.com"))
+    end
   end
 
   describe "get_cookie_header_value/2" do
     setup :create_jar
+
+    test "works with IPv6 literal and underscore hosts", ctx do
+      for host <- ["::1", "my_service"] do
+        url = %URI{scheme: "http", host: host, port: 4000, path: "/"}
+        jar = Jar.put_cookies_from_headers(ctx.jar, url, [{"set-cookie", "a=b"}])
+        assert {:ok, "a=b", _} = Jar.get_cookie_header_value(jar, url)
+      end
+    end
+
+    test "doesn't crash on invalid request hosts", ctx do
+      jar = Jar.put_cookies_from_headers(ctx.jar, ctx.url, [{"set-cookie", "a=b"}])
+
+      for host <- ["exa mple.com", "", "bad\xFF.com", "a\0b.com", nil] do
+        url = %URI{scheme: "https", host: host, path: "/"}
+        assert {:error, :no_matching_cookies} = Jar.get_cookie_header_value(jar, url)
+        assert ^jar = Jar.put_cookies_from_headers(jar, url, [{"set-cookie", "c=d"}])
+      end
+    end
 
     test "when no cookies match", ctx do
       assert Jar.get_cookie_header_value(ctx.jar, ctx.url) == {:error, :no_matching_cookies}
@@ -324,6 +385,16 @@ defmodule HttpCookie.JarTest do
                 }
               ], _} = Jar.get_matching_cookies(jar, ctx.url)
     end
+
+    test "removes domains left without cookies", ctx do
+      jar =
+        Enum.reduce(1..10, ctx.jar, fn i, jar ->
+          url = URI.parse("https://sub#{i}.example.com")
+          Jar.put_cookies_from_headers(jar, url, [{"set-cookie", "dead=x; Max-Age=0"}])
+        end)
+
+      assert jar.cookies == %{}
+    end
   end
 
   describe "clear_session_cookies/1" do
@@ -352,6 +423,11 @@ defmodule HttpCookie.JarTest do
   # based on:
   # https://github.com/abarth/http-state/tree/master/tests/data/parser
   # `ietf-test-cases.json` was generated using `test_data_to_json.py`
+  #
+  # CHROMIUM0022 and CHROMIUM0023 are disabled upstream, where they expect Chromium's old
+  # behavior of truncating the cookie at a NUL or CR. They're enabled here with RFC6265bis's
+  # expectation instead: a set-cookie-string containing control characters (other than
+  # HTAB) is ignored entirely.
   describe "IETF" do
     test_cases =
       __ENV__.file

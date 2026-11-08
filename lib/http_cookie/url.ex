@@ -17,12 +17,33 @@ defmodule HttpCookie.URL do
   #
   # 3.  Concatenate the resulting labels, separated by a %x2E (".")
   #     character.
-  def canonicalize_domain(domain) do
-    domain
-    |> :idna.to_ascii()
-    |> to_string()
-    |> String.downcase()
+  # Returns nil if the host can't be canonicalized (e.g. it contains disallowed code points).
+  def canonicalize_domain(domain) when is_binary(domain) and domain != "" do
+    if ascii_host?(domain) do
+      # Already ASCII, so there are no labels to convert. This also keeps hosts
+      # that :idna rejects, like IPv6 literals and names with underscores.
+      String.downcase(domain)
+    else
+      domain
+      # IDNA2008 rejects upper-case code points, so lower-case first
+      |> String.downcase()
+      # :idna's typespecs only accept charlists
+      |> String.to_charlist()
+      |> :idna.to_ascii()
+      |> to_string()
+    end
+  catch
+    _kind, _reason -> nil
   end
+
+  def canonicalize_domain(_domain), do: nil
+
+  # Letters, digits, "-", "." and "_" make up DNS names, ":" appears in IPv6 literals.
+  defp ascii_host?(<<char, rest::binary>>) when char in ?a..?z or char in ?A..?Z or char in ?0..?9 or char in ~c"-._:",
+    do: ascii_host?(rest)
+
+  defp ascii_host?(<<>>), do: true
+  defp ascii_host?(_domain), do: false
 
   def normalize_path(path) when path in [nil, ""], do: "/"
   def normalize_path(path), do: path
@@ -124,6 +145,10 @@ defmodule HttpCookie.URL do
   def public_suffix?(domain) do
     PublicSufx.public_suffix?(domain)
   end
+
+  # The RFC leaves the notion of a "secure" protocol to the user agent;
+  # like most user agents, we consider https to be secure.
+  def secure?(%URI{scheme: scheme}), do: scheme == "https"
 
   def ip_address?(str) do
     charlist = String.to_charlist(str)

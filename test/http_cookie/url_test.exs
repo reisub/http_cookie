@@ -7,6 +7,10 @@ defmodule HttpCookie.URLTest do
     assert canonicalize_domain("example.org") == "example.org"
     assert canonicalize_domain("EXAMPLE.ORG") == "example.org"
     assert canonicalize_domain("ö.example.org") == "xn--nda.example.org"
+    assert canonicalize_domain("Bücher.DE") == "xn--bcher-kva.de"
+    assert canonicalize_domain("My_Service") == "my_service"
+    assert canonicalize_domain("::1") == "::1"
+    assert canonicalize_domain("127.0.0.1") == "127.0.0.1"
   end
 
   test "normalize_path/1" do
@@ -54,6 +58,12 @@ defmodule HttpCookie.URLTest do
     refute domain_match?("some,example.org", "example.org")
     refute domain_match?("someexample.org", "example.org")
     refute domain_match?("com", "example.org")
+  end
+
+  test "secure?/1" do
+    assert secure?(URI.parse("https://example.org"))
+    refute secure?(URI.parse("http://example.org"))
+    refute secure?(URI.parse("ws://example.org"))
   end
 
   test "ip_address?/1" do

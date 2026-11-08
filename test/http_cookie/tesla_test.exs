@@ -52,9 +52,9 @@ defmodule HttpCookie.TeslaTest do
     assert %{
              "example.com" => %{
                cookies: %{
-                 {"foo", "/"} => _,
-                 {"foo2", "/"} => _,
-                 {"foo3", "/"} => _
+                 {"foo", "/", true} => _,
+                 {"foo2", "/", true} => _,
+                 {"foo3", "/", true} => _
                }
              }
            } = jar.cookies
@@ -101,8 +101,8 @@ defmodule HttpCookie.TeslaTest do
     assert %{
              "example.com" => %{
                cookies: %{
-                 {"redirected", "/"} => _,
-                 {"stopped", "/"} => _
+                 {"redirected", "/", true} => _,
+                 {"stopped", "/", true} => _
                }
              }
            } = jar.cookies

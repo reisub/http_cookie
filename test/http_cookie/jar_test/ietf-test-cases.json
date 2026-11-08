@@ -564,13 +564,11 @@
     ]
   },
   {
-    "test": "DISABLED_CHROMIUM0022",
+    "test": "CHROMIUM0022",
     "received": [
       "AAA=BB\u0000ZYX"
     ],
-    "sent": [
-      { "name": "AAA", "value": "BB" }
-    ]
+    "sent": []
   },
   {
     "test": "NAME0002",
@@ -866,13 +864,11 @@
     "sent": []
   },
   {
-    "test": "DISABLED_CHROMIUM0023",
+    "test": "CHROMIUM0023",
     "received": [
       "AAA=BB\rZYX"
     ],
-    "sent": [
-      { "name": "AAA", "value": "BB" }
-    ]
+    "sent": []
   },
   {
     "test": "CHROMIUM0007",
