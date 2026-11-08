@@ -7,6 +7,9 @@ defmodule HttpCookie.URLTest do
     assert canonicalize_domain("example.org") == "example.org"
     assert canonicalize_domain("EXAMPLE.ORG") == "example.org"
     assert canonicalize_domain("ö.example.org") == "xn--nda.example.org"
+    assert canonicalize_domain("My_Service") == "my_service"
+    assert canonicalize_domain("::1") == "::1"
+    assert canonicalize_domain("127.0.0.1") == "127.0.0.1"
   end
 
   test "normalize_path/1" do

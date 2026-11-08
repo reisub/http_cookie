@@ -19,17 +19,30 @@ defmodule HttpCookie.URL do
   #     character.
   # Returns nil if the host can't be canonicalized (e.g. it contains disallowed code points).
   def canonicalize_domain(domain) when is_binary(domain) and domain != "" do
-    domain
-    # :idna's typespecs only accept charlists
-    |> String.to_charlist()
-    |> :idna.to_ascii()
-    |> to_string()
-    |> String.downcase()
+    if ascii_host?(domain) do
+      # Already ASCII, so there are no labels to convert. This also keeps hosts
+      # that :idna rejects, like IPv6 literals and names with underscores.
+      String.downcase(domain)
+    else
+      domain
+      # :idna's typespecs only accept charlists
+      |> String.to_charlist()
+      |> :idna.to_ascii()
+      |> to_string()
+      |> String.downcase()
+    end
   catch
     _kind, _reason -> nil
   end
 
   def canonicalize_domain(_domain), do: nil
+
+  # Letters, digits, "-", "." and "_" make up DNS names, ":" appears in IPv6 literals.
+  defp ascii_host?(<<char, rest::binary>>) when char in ?a..?z or char in ?A..?Z or char in ?0..?9 or char in ~c"-._:",
+    do: ascii_host?(rest)
+
+  defp ascii_host?(<<>>), do: true
+  defp ascii_host?(_domain), do: false
 
   def normalize_path(path) when path in [nil, ""], do: "/"
   def normalize_path(path), do: path

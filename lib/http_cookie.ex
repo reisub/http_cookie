@@ -68,7 +68,7 @@ defmodule HttpCookie do
          cookie = set_path(cookie, attributes, request_url),
          cookie = set_secure_only(cookie, attributes),
          :ok <- check_secure_origin(cookie, request_url),
-         :ok <- check_prefix(cookie, attributes, request_url) do
+         :ok <- check_prefix(cookie, attributes) do
       {:ok, set_http_only(cookie, attributes)}
     end
   end
@@ -131,13 +131,33 @@ defmodule HttpCookie do
   """
   @spec matches_url?(cookie :: t(), request_url :: URI.t()) :: boolean()
   def matches_url?(cookie, %URI{} = request_url) do
-    request_domain = URL.canonicalize_domain(request_url.host)
-    request_path = URL.normalize_path(request_url.path)
+    case request_matcher(request_url) do
+      nil -> false
+      matcher -> matches_request?(cookie, matcher)
+    end
+  end
 
-    request_domain != nil and
-      matches_domain?(cookie, request_domain) and
+  @typedoc false
+  @type request_matcher :: {domain :: String.t(), path :: String.t(), secure? :: boolean()}
+
+  # Canonicalizes the request URL once, so matching many cookies against it
+  # doesn't redo that work for each cookie. Returns nil if the host can't be
+  # canonicalized, in which case no cookie matches.
+  @doc false
+  @spec request_matcher(request_url :: URI.t()) :: request_matcher() | nil
+  def request_matcher(%URI{} = request_url) do
+    case URL.canonicalize_domain(request_url.host) do
+      nil -> nil
+      domain -> {domain, URL.normalize_path(request_url.path), URL.secure?(request_url)}
+    end
+  end
+
+  @doc false
+  @spec matches_request?(cookie :: t(), request_matcher()) :: boolean()
+  def matches_request?(cookie, {request_domain, request_path, secure?}) do
+    matches_domain?(cookie, request_domain) and
       URL.path_match?(request_path, cookie.path) and
-      (!cookie.secure_only? or URL.secure?(request_url))
+      (!cookie.secure_only? or secure?)
   end
 
   @doc """
@@ -341,9 +361,10 @@ defmodule HttpCookie do
 
   # RFC6265bis: "__Secure-" cookies must be Secure and set from a secure origin,
   # "__Host-" cookies additionally must have no Domain attribute and Path=/.
-  defp check_prefix(cookie, attributes, request_url) do
+  # check_secure_origin/2 runs first and already rejects Secure cookies from
+  # insecure origins, so the Secure flag is all that's left to check here.
+  defp check_prefix(%{secure_only?: secure?} = cookie, attributes) do
     name = String.downcase(cookie.name)
-    secure? = cookie.secure_only? and URL.secure?(request_url)
 
     host_ok? =
       secure? and List.keyfind(attributes, "Domain", 0) == nil and

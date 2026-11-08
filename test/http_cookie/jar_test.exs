@@ -291,6 +291,14 @@ defmodule HttpCookie.JarTest do
   describe "get_cookie_header_value/2" do
     setup :create_jar
 
+    test "works with IPv6 literal and underscore hosts", ctx do
+      for host <- ["::1", "my_service"] do
+        url = %URI{scheme: "http", host: host, port: 4000, path: "/"}
+        jar = Jar.put_cookies_from_headers(ctx.jar, url, [{"set-cookie", "a=b"}])
+        assert {:ok, "a=b", _} = Jar.get_cookie_header_value(jar, url)
+      end
+    end
+
     test "doesn't crash on invalid request hosts", ctx do
       jar = Jar.put_cookies_from_headers(ctx.jar, ctx.url, [{"set-cookie", "a=b"}])
 

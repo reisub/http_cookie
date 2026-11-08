@@ -71,7 +71,7 @@ defmodule HttpCookie.Jar do
           _ -> []
         end
       end)
-      |> Enum.reject(&(not URL.secure?(request_url) and overlays_secure_cookie?(jar, &1)))
+      |> reject_secure_overlays(jar, request_url)
 
     put_cookies(jar, cookies)
   end
@@ -152,16 +152,25 @@ defmodule HttpCookie.Jar do
   """
   @spec get_matching_cookies(jar :: %__MODULE__{}, request_url :: URI.t()) ::
           {list(HttpCookie.t()), %__MODULE__{}}
+  # Skip canonicalizing the request URL when there's nothing to match it against
+  def get_matching_cookies(%{cookies: cookies} = jar, _request_url) when map_size(cookies) == 0, do: {[], jar}
+
   def get_matching_cookies(jar, request_url) do
     now = DateTime.utc_now()
 
     matching_cookies =
-      jar
-      |> all_cookies()
-      |> Enum.filter(fn cookie ->
-        !HttpCookie.expired?(cookie, now) and HttpCookie.matches_url?(cookie, request_url)
-      end)
-      |> sort_cookies()
+      case HttpCookie.request_matcher(request_url) do
+        nil ->
+          []
+
+        matcher ->
+          jar
+          |> all_cookies()
+          |> Enum.filter(fn cookie ->
+            !HttpCookie.expired?(cookie, now) and HttpCookie.matches_request?(cookie, matcher)
+          end)
+          |> sort_cookies()
+      end
 
     now = DateTime.utc_now()
 
@@ -185,19 +194,7 @@ defmodule HttpCookie.Jar do
   @spec clear_expired_cookies(jar :: %__MODULE__{}) :: %__MODULE__{}
   @spec clear_expired_cookies(jar :: %__MODULE__{}, now :: DateTime.t()) :: %__MODULE__{}
   def clear_expired_cookies(jar, now \\ DateTime.utc_now()) do
-    updated_cookies =
-      jar.cookies
-      |> Map.new(fn {domain, %{cookies: domain_cookies}} ->
-        %{
-          result: result,
-          kept: kept
-        } = filter_with_count(domain_cookies, fn {_k, c} -> !HttpCookie.expired?(c, now) end)
-
-        {domain, %{count: kept, cookies: Map.new(result)}}
-      end)
-      |> Map.reject(fn {_domain, %{count: count}} -> count == 0 end)
-
-    %{jar | cookies: updated_cookies}
+    keep_cookies(jar, &(!HttpCookie.expired?(&1, now)))
   end
 
   @doc """
@@ -207,13 +204,18 @@ defmodule HttpCookie.Jar do
   """
   @spec clear_session_cookies(jar :: %__MODULE__{}) :: %__MODULE__{}
   def clear_session_cookies(jar) do
+    keep_cookies(jar, & &1.persistent?)
+  end
+
+  # Keeps the cookies for which keep? returns true and drops domains left without cookies.
+  defp keep_cookies(jar, keep?) do
     updated_cookies =
       jar.cookies
       |> Map.new(fn {domain, %{cookies: domain_cookies}} ->
         %{
           result: result,
           kept: kept
-        } = filter_with_count(domain_cookies, fn {_k, c} -> c.persistent? end)
+        } = filter_with_count(domain_cookies, fn {_k, c} -> keep?.(c) end)
 
         {domain, %{count: kept, cookies: Map.new(result)}}
       end)
@@ -235,9 +237,11 @@ defmodule HttpCookie.Jar do
         |> put_in(count_access_path, domain_cookie_count + 1)
 
       old_cookie ->
-        # If the user agent receives a new cookie with the same cookie-name,
-        # domain-value, and path-value as a cookie that it has already stored,
-        # the existing cookie is evicted and replaced with the new cookie.
+        # RFC6265bis: if the cookie store contains a cookie with the same name,
+        # domain, host-only-flag, and path as the newly-created cookie, the
+        # existing cookie is evicted and replaced with the new cookie. A
+        # host-only cookie and a domain cookie with the same name and path are
+        # stored side by side, and both are sent.
         put_in(jar, cookie_access_path, %{cookie | creation_time: old_cookie.creation_time})
     end
   end
@@ -348,15 +352,22 @@ defmodule HttpCookie.Jar do
 
   # RFC6265bis: a non-secure origin can't set a cookie that would overlay
   # an existing Secure cookie with the same name and a matching domain/path.
-  defp overlays_secure_cookie?(jar, cookie) do
-    jar
-    |> all_cookies()
-    |> Enum.any?(fn existing ->
-      existing.secure_only? and existing.name == cookie.name and
-        (URL.domain_match?(existing.domain, cookie.domain) or
-           URL.domain_match?(cookie.domain, existing.domain)) and
-        URL.path_match?(cookie.path, existing.path)
-    end)
+  defp reject_secure_overlays([], _jar, _request_url), do: []
+
+  defp reject_secure_overlays(cookies, jar, request_url) do
+    if URL.secure?(request_url) do
+      cookies
+    else
+      secure_cookies = jar |> all_cookies() |> Enum.filter(& &1.secure_only?)
+      Enum.reject(cookies, fn cookie -> Enum.any?(secure_cookies, &overlays?(cookie, &1)) end)
+    end
+  end
+
+  defp overlays?(cookie, existing) do
+    existing.name == cookie.name and
+      (URL.domain_match?(existing.domain, cookie.domain) or
+         URL.domain_match?(cookie.domain, existing.domain)) and
+      URL.path_match?(cookie.path, existing.path)
   end
 
   defp all_cookies(jar) do
