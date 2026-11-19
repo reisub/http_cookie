@@ -15,6 +15,7 @@ defmodule HttpCookie.URLTest do
     assert canonicalize_domain("ex­ample.org") == "example.org"
     assert canonicalize_domain("bücher。de") == "xn--bcher-kva.de"
     assert canonicalize_domain("a b.ö") == nil
+    assert canonicalize_domain("a@b.ö") == nil
     assert canonicalize_domain("My_Service") == "my_service"
     assert canonicalize_domain("::1") == "::1"
     assert canonicalize_domain("127.0.0.1") == "127.0.0.1"

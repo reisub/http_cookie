@@ -28,8 +28,10 @@ defmodule HttpCookie.URL do
       # :idna's typespecs only accept charlists
       |> String.to_charlist()
       # UTS #46 mapping first, like browsers do: it lower-cases, maps full-width
-      # and compatibility characters (e.g. "ｅｘａｍｐｌｅ.com") and drops soft hyphens
-      |> :idna.encode(uts46: true)
+      # and compatibility characters (e.g. "ｅｘａｍｐｌｅ.com") and drops soft hyphens.
+      # Without std3_rules, UTS #46 lets through ASCII that can't be in a host name,
+      # like spaces, "@" or "<".
+      |> :idna.encode(uts46: true, std3_rules: true)
       |> to_string()
     end
   catch

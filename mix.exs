@@ -47,7 +47,7 @@ defmodule HttpCookie.MixProject do
 
   defp deps do
     [
-      {:idna, "~> 7.1"},
+      {:idna, "~> 8.0"},
       {:public_sufx, "~> 0.8"},
       # ex_doc needs it in the docs environment too
       {:nimble_parsec, "~> 1.0", only: [:dev, :test, :docs]},
