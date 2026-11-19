@@ -1,9 +1,13 @@
 name: Publish
 
+# Runs once CI finishes on main and only publishes if it passed, so a commit
+# that fails CI is never published. Re-running a failed CI run that then passes
+# starts this workflow again.
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions: {}
@@ -12,13 +16,30 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
 
+env:
+  # The commit CI tested. github.sha is the latest commit on main for workflow_run,
+  # which can be newer.
+  RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
 jobs:
   check:
     name: Check release
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.head_commit.message, '[skip publish]') && !contains(github.event.head_commit.message, '[publish skip]') }}
+    # workflow_run also fires for CI on pull requests, including ones from forks with a
+    # branch named main, so only go on after a successful CI run for a push to this repo.
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' || (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_repository.full_name == github.repository &&
+          !contains(github.event.workflow_run.head_commit.message, '[skip publish]') &&
+          !contains(github.event.workflow_run.head_commit.message, '[publish skip]')
+        )
+      }}
     permissions:
       contents: read
+      actions: read # look up CI runs for manually started runs
     outputs:
       version: ${{ steps.check.outputs.version }}
       tag: ${{ steps.check.outputs.tag }}
@@ -26,7 +47,21 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ env.RELEASE_SHA }}
           persist-credentials: false
+
+      - name: Check that CI passed on this commit
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          conclusion=$(gh run list --workflow ci.yml --event push --branch main --commit "$RELEASE_SHA" \
+            --limit 1 --json conclusion --jq '.[0].conclusion // ""')
+          if [[ $conclusion != success ]]; then
+            echo "CI hasn't passed for $RELEASE_SHA on main (latest run: ${conclusion:-none})" >&2
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
 
       - name: Check whether the version is tagged and published
         id: check
@@ -51,6 +86,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ env.RELEASE_SHA }}
           persist-credentials: false
 
       - name: Install OTP and Elixir
@@ -79,14 +115,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ env.RELEASE_SHA }}
           persist-credentials: false
 
-      # The tag doesn't exist yet, so creating the release creates it on this commit in
-      # the same API call: a failed release leaves no tag behind and a re-run retries both.
+      # The tag doesn't exist yet, so creating the release creates it on the released commit
+      # in the same API call: a failed release leaves no tag behind and a re-run retries both.
       - name: Create release
         run: |
           .github/workflows/release_notes.sh "$VERSION" >"$RUNNER_TEMP/notes.md"
-          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file "$RUNNER_TEMP/notes.md"
+          gh release create "v$VERSION" --target "$RELEASE_SHA" --title "v$VERSION" --notes-file "$RUNNER_TEMP/notes.md"
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

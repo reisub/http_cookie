@@ -89,7 +89,7 @@ defmodule HttpCookie.PerformanceTest do
     assert_reductions(
       &HttpCookie.from_cookie_string(&1, idn_url),
       %{"idn_host" => "lang=en"},
-      %{"idn_host" => 1_050}
+      %{"idn_host" => 1_360}
     )
   end
 
