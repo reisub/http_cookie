@@ -8,6 +8,13 @@ defmodule HttpCookie.URLTest do
     assert canonicalize_domain("EXAMPLE.ORG") == "example.org"
     assert canonicalize_domain("ö.example.org") == "xn--nda.example.org"
     assert canonicalize_domain("Bücher.DE") == "xn--bcher-kva.de"
+    assert canonicalize_domain("faß.de") == "xn--fa-hia.de"
+    # UTS #46 mapping: full-width characters, ligatures and soft hyphens
+    assert canonicalize_domain("ＥＸＡＭＰＬＥ.ｏｒｇ") == "example.org"
+    assert canonicalize_domain("ﬁle.example.org") == "file.example.org"
+    assert canonicalize_domain("ex­ample.org") == "example.org"
+    assert canonicalize_domain("bücher。de") == "xn--bcher-kva.de"
+    assert canonicalize_domain("a b.ö") == nil
     assert canonicalize_domain("My_Service") == "my_service"
     assert canonicalize_domain("::1") == "::1"
     assert canonicalize_domain("127.0.0.1") == "127.0.0.1"
